@@ -1,0 +1,376 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+<title>Plano de Estudos — v1.0</title>
+
+<link rel="manifest" href="./manifest.json" />
+<link rel="icon" href="./logo.ico" />
+<meta name="theme-color" content="#0b5ea8" />
+
+<style>
+/* estilos compactos — conforme versão anterior */
+:root{--primary:#0b5ea8;--accent:#ff8a00;--bg:#f5f7fb;--card:#fff;--muted:#6b7280;--radius:12px;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;}
+*{box-sizing:border-box} body{margin:0;background:linear-gradient(180deg,var(--bg),#eef2f7);color:#111827}
+.app{display:grid;grid-template-columns:280px 1fr;min-height:100vh;gap:20px;padding:20px}
+.sidebar{background:var(--card);border-radius:var(--radius);padding:18px;box-shadow:0 6px 18px rgba(15,23,42,0.06);display:flex;flex-direction:column}
+#logo{width:100%;height:56px;object-fit:contain;background:#fff;padding:6px;border-radius:8px}
+h1{font-size:18px;margin:8px 0 0;color:var(--primary)}
+.meta{font-size:13px;color:var(--muted)}
+.contest-list{margin-top:12px;display:flex;flex-direction:column;gap:8px}
+.contest-item{padding:10px 12px;border-radius:8px;cursor:pointer}
+.contest-item.active{background:linear-gradient(90deg,var(--primary),#0a4f8d);color:white}
+.controls{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+button{cursor:pointer;border:0;padding:8px 12px;border-radius:8px;background:var(--primary);color:white}
+.btn-ghost{background:transparent;color:var(--primary);border:1px solid rgba(11,94,168,0.08)}
+.small{padding:6px 8px;font-size:13px}
+.main{display:flex;flex-direction:column;gap:14px}
+.header{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.title{font-size:20px}
+.card{background:var(--card);border-radius:var(--radius);padding:14px;box-shadow:0 6px 18px rgba(15,23,42,0.04)}
+.contest-card{display:grid;grid-template-columns:1fr 220px;gap:14px;align-items:start}
+.subject-list{display:flex;flex-direction:column;gap:8px;max-height:560px;overflow:auto;padding-right:6px}
+.materia{border-radius:10px;border:1px solid rgba(15,23,42,0.06);padding:8px;background:linear-gradient(180deg,#fff,#f8fbff)}
+.materia-head{display:flex;align-items:center;justify-content:space-between;cursor:pointer;padding:6px}
+.materia-title{font-weight:700}
+.materia-meta{font-size:13px;color:var(--muted)}
+.assuntos{margin-top:8px;display:none;flex-direction:column;gap:6px;padding-left:12px}
+.assunto{display:flex;align-items:center;gap:10px;padding:6px;border-radius:8px}
+.state-btn{width:36px;height:36px;border-radius:8px;border:1px solid rgba(15,23,42,0.06);display:flex;align-items:center;justify-content:center;font-weight:700;cursor:pointer}
+.note-btn{background:transparent;border:0;color:var(--muted);cursor:pointer}
+.rings{display:flex;flex-direction:column;gap:12px;align-items:center}
+.ring-outer{width:180px;height:180px}
+.ring-label{text-align:center;font-size:13px;color:var(--muted)}
+.status-line{margin-top:8px;font-size:13px;color:var(--muted);display:flex;gap:8px;align-items:center}
+@media(max-width:900px){.app{grid-template-columns:1fr;padding:12px}.contest-card{grid-template-columns:1fr}.rings{flex-direction:row;justify-content:center}.ring-outer{width:80px;height:80px}}
+.modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,0.45);display:none;align-items:center;justify-content:center;padding:24px;z-index:999}
+.modal{background:white;border-radius:12px;padding:16px;max-width:900px;width:100%;max-height:86vh;overflow:auto}
+.modal textarea{width:100%;height:260px;padding:12px;border-radius:8px;border:1px solid rgba(15,23,42,0.1);resize:vertical}
+.footer-row{display:flex;gap:8px;justify-content:flex-end;margin-top:12px;}
+.clear-cache{margin-top:8px}
+</style>
+</head>
+<body>
+
+<!-- Prevent pinch/double-tap zoom -->
+<script>
+document.addEventListener('touchstart', function(e){ if(e.touches && e.touches.length>1) e.preventDefault(); }, {passive:false});
+let lastTouchEnd=0; document.addEventListener('touchend', function(e){ const now=Date.now(); if(now-lastTouchEnd<=300) e.preventDefault(); lastTouchEnd=now; }, false);
+</script>
+
+<div class="app">
+  <aside class="sidebar card">
+    <img id="logo" src="./logo.png" alt="Logo" />
+    <h1>Plano de Estudos</h1>
+    <div class="meta">PC-BA & PRF-ADM</div>
+
+    <div class="contest-list" id="contestList">
+      <div class="contest-item active" data-key="pc_ba">Polícia Civil - PC-BA</div>
+      <div class="contest-item" data-key="prf_adm">PRF Administrativo</div>
+    </div>
+
+    <div class="controls">
+      <button id="exportBtn" class="small btn-ghost">Exportar JSON</button>
+      <button id="importBtn" class="small btn-ghost">Importar JSON</button>
+      <button id="syncBtn" class="small">Sincronizar (Drive)</button>
+    </div>
+
+    <div style="height:12px"></div>
+
+    <div id="authArea">
+      <button id="signinBtn" class="small btn-ghost">Entrar com Google</button>
+    </div>
+
+    <div class="status-line" id="syncStatus">Status: offline (salvamento local)</div>
+    <div style="height:6px"></div>
+    <div class="meta" style="font-size:12px">Versão do app: <span id="appVersion">v1.0</span></div>
+
+    <button id="clearCaches" class="small btn-ghost clear-cache">Limpar cache PWA</button>
+  </aside>
+
+  <main class="main">
+    <div class="header">
+      <div>
+        <div class="title" id="pageTitle">Polícia Civil - PC-BA</div>
+        <div class="meta">Clique na matéria para abrir os assuntos. Notas por matéria.</div>
+      </div>
+
+      <div class="card" style="display:flex;align-items:center;gap:12px">
+        <div style="text-align:right">
+          <div style="font-weight:700" id="percentText">0%</div>
+          <div class="meta" style="font-size:12px">Progresso</div>
+        </div>
+        <div class="rings">
+          <svg class="ring-outer" id="progressRingSvg" viewBox="0 0 120 120">
+            <g transform="translate(60,60)">
+              <circle r="52" fill="none" stroke="#e6eef8" stroke-width="12"></circle>
+              <circle r="52" fill="none" stroke="var(--primary)" stroke-width="12" stroke-linecap="round"
+                stroke-dasharray="326.7256" stroke-dashoffset="326.7256" transform="rotate(-90)"></circle>
+              <text id="ringNum" x="0" y="6" font-size="16" text-anchor="middle" fill="#0b2540" font-weight="700">0%</text>
+            </g>
+          </svg>
+          <div class="ring-label" id="ringLabel">PC-BA</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card contest-card">
+      <div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:10px"><strong>Matérias</strong><div class="meta">Clique para expandir</div></div>
+        <div class="subject-list" id="subjectList"></div>
+      </div>
+
+      <aside>
+        <div class="card" style="text-align:center">
+          <div id="sidePercent" style="font-weight:700;font-size:16px">0%</div>
+          <div class="meta">Progresso do concurso</div>
+          <div style="height:12px"></div>
+          <div style="font-size:14px;font-weight:600">Progresso Geral</div>
+          <div style="height:12px"></div>
+          <div id="globalPercent" style="font-size:20px;font-weight:700">0%</div>
+        </div>
+      </aside>
+    </div>
+
+  </main>
+</div>
+
+<div class="modal-backdrop" id="modalBackdrop"><div class="modal"><h3 id="modalTitle">Notas</h3><textarea id="noteArea" placeholder="Anotações por matéria..."></textarea><div class="footer-row"><button id="closeModal" class="btn-ghost small">Fechar</button><button id="deleteNote" class="btn-ghost small">Apagar</button><button id="saveNote" class="small">Salvar</button></div></div></div>
+
+<script src="https://apis.google.com/js/api.js"></script>
+
+<script>
+/* CONFIG */
+const APP_VERSION = "v1.0";
+document.getElementById("appVersion").textContent = APP_VERSION;
+const CLIENT_ID = "553818652026-vjsmkokm1pibph3ehai36q3pmbp8js88.apps.googleusercontent.com";
+const SCOPES = "https://www.googleapis.com/auth/drive.appdata";
+
+/* DATA */
+const MATERIAS = {
+  "Língua Portuguesa":["Interpretação de textos","Tipologia e gêneros textuais","Pontuação","Concordância nominal e verbal","Regência","Crase","Coesão e coerência","Semântica","Ortografia"],
+  "Direito Constitucional":["Direitos e garantias fundamentais","Poderes do Estado","Organização administrativa do Estado","Art. 144 - Segurança Pública","Controle de constitucionalidade","Administração pública na Constituição"],
+  "Direito Administrativo":["Administração direta e indireta","Atos administrativos","Poderes administrativos","Serviços públicos","Licitações e contratos (Lei 14.133/2021)","Improbidade administrativa (Lei 8.429/92)","Responsabilidade civil do Estado","Processo administrativo (Lei 9.784/99)"],
+  "Direito Penal":["Crime, fato típico e ilícito","Dolo e culpa","Tipicidade, antijuridicidade e culpabilidade","Concurso de pessoas","Crimes contra a pessoa","Crimes contra o patrimônio","Crimes contra a fé pública","Crimes contra a administração pública"],
+  "Raciocínio Lógico":["Proposições e conectivos","Tabelas-verdade","Argumentos e inferências","Problemas básicos","Porcentagem","Razões e proporções","Equações simples","Probabilidade básica"],
+  "Direito Processual Penal":["Inquérito policial","Ação penal","Prisões e liberdade provisória","Flagrante","Provas","Competência","Medidas cautelares"],
+  "Informática":["Sistemas operacionais (Windows)","Pacote Office","Internet e navegadores","Segurança da informação","Armazenamento em nuvem","E-mail e protocolos"],
+  "Direitos Humanos":["Direitos fundamentais","Tratados internacionais","Sistema Interamericano","Princípios de dignidade","Igualdade e não discriminação"],
+  "Legislação Penal Especial":["Lei de Drogas","Lei Maria da Penha","ECA","Estatuto do Idoso","Lei de Tortura","Lei de Organizações Criminosas","Lei de Abuso de Autoridade","Estatuto do Desarmamento"],
+  "Criminologia":["Conceitos e correntes","Crime, criminoso e vítima","Políticas criminais","Teorias sociológicas"],
+  "Noções de Medicina Legal":["Lesões corporais","Tanatologia","Identificação humana","Sexologia forense"],
+  "Atualidades":["Cenário nacional e internacional","Economia e política","Tecnologia e inovação","Sustentabilidade","Administração pública moderna"],
+  "Arquivologia":["Conceitos de arquivo","Gestão de documentos","Classificação e conservação","Protocolo"],
+  "Administração Geral":["Funções administrativas","Gestão de pessoas","Comunicação organizacional","Clima e cultura organizacional"],
+  "Administração Financeira e Orçamentária (AFO)":["Orçamento público","Receita e despesa","LOA, LDO, PPA","Execução orçamentária"]
+};
+
+const CONCURSOS = {
+  pc_ba:["Língua Portuguesa","Direito Constitucional","Direito Administrativo","Direito Penal","Raciocínio Lógico","Direito Processual Penal","Informática","Direitos Humanos","Legislação Penal Especial","Criminologia","Noções de Medicina Legal"],
+  prf_adm:["Língua Portuguesa","Direito Constitucional","Direito Administrativo","Direito Penal","Raciocínio Lógico","Direito Processual Penal","Informática","Direitos Humanos","Atualidades","Arquivologia","Administração Geral","Administração Financeira e Orçamentária (AFO)"]
+};
+
+/* STATE */
+const STORAGE_KEY = "progresso_estudos_v1_local";
+function defaultState(){ const b={version:APP_VERSION,updatedAt:Date.now(),materias:{},notes:{}}; for(const m of Object.keys(MATERIAS)){ b.materias[m]={}; for(const a of MATERIAS[m]) b.materias[m][a]=0; } return b; }
+function loadLocal(){ try{ const raw=localStorage.getItem(STORAGE_KEY); if(!raw) return defaultState(); const parsed=JSON.parse(raw); return Object.assign(defaultState(), parsed); }catch(e){ return defaultState(); } }
+function saveLocal(){ state.updatedAt = Date.now(); localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+
+let state = loadLocal();
+let activeContest = "pc_ba";
+
+/* GAPI / DRIVE helpers */
+let gapiInited=false, gapiAuthInstance=null;
+
+function initGapi(){
+  return new Promise((resolve,reject)=>{
+    if(typeof gapi === 'undefined'){ console.error('gapi not loaded'); reject(new Error('gapi not loaded')); return; }
+    gapi.load('client:auth2', async ()=>{
+      try{
+        await gapi.client.init({ clientId: CLIENT_ID, discoveryDocs:["https://www.googleapis.com/discovery/v1/apis/drive/v3/rest"], scope: SCOPES });
+        gapiInited = true; gapiAuthInstance = gapi.auth2.getAuthInstance();
+        console.log('gapi initialized');
+        resolve();
+      }catch(err){ console.error('gapi init error', err); reject(err); }
+    });
+  });
+}
+
+async function signIn(){
+  try{
+    if(!gapiInited) await initGapi();
+    if(!gapiAuthInstance.isSignedIn.get()) await gapiAuthInstance.signIn();
+    onSignInSuccess();
+  }catch(e){ console.error('signIn error', e); alert('Falha ao autenticar: veja console.'); }
+}
+
+function signOut(){ if(gapiInited && gapiAuthInstance){ gapiAuthInstance.signOut().then(()=>{ updateAuthUI(); setSyncStatus('offline (local)'); }); } }
+
+/* Drive file helpers */
+const DRIVE_FILE_NAME = "progresso_estudos.json";
+async function findAppDataFile(){
+  const res = await gapi.client.drive.files.list({ spaces:'appDataFolder', fields:'files(id,name,modifiedTime)', q:`name='${DRIVE_FILE_NAME}'` });
+  return (res.result.files && res.result.files[0]) || null;
+}
+async function createAppDataFile(content){
+  const metadata = { name: DRIVE_FILE_NAME, parents: ['appDataFolder'] };
+  const boundary = '-------314159265358979323846';
+  const delimiter = "\r\n--" + boundary + "\r\n";
+  const close_delim = "\r\n--" + boundary + "--";
+  const multipartRequestBody =
+    delimiter + 'Content-Type: application/json\r\n\r\n' + JSON.stringify(metadata) +
+    delimiter + 'Content-Type: application/json\r\n\r\n' + JSON.stringify(content) + close_delim;
+  const res = await gapi.client.request({ path:'/upload/drive/v3/files', method:'POST', params:{uploadType:'multipart', fields:'id,modifiedTime'}, headers:{'Content-Type':'multipart/related; boundary="' + boundary + '"' }, body: multipartRequestBody });
+  return res.result;
+}
+async function updateAppDataFile(fileId, content){
+  const res = await gapi.client.request({ path:`/upload/drive/v3/files/${fileId}`, method:'PATCH', params:{uploadType:'media', fields:'id,modifiedTime'}, body: JSON.stringify(content) });
+  return res.result;
+}
+async function downloadAppDataFile(fileId){
+  const res = await gapi.client.request({ path:`/drive/v3/files/${fileId}`, method:'GET', params:{ alt:'media' } });
+  return res.body ? JSON.parse(res.body) : null;
+}
+
+/* Sync logic */
+async function loadFromDriveOrCreate(){
+  if(!gapiInited) await initGapi();
+  const file = await findAppDataFile().catch(()=>null);
+  if(!file){
+    await createAppDataFile(state).catch(e=>{ console.error('create file failed',e); });
+    setSyncStatus('sincronizado (criado)');
+    return;
+  }
+  const remote = await downloadAppDataFile(file.id).catch(e=>{ console.error('download failed',e); return null; });
+  if(remote){
+    if((remote.updatedAt||0) > (state.updatedAt||0)){ state = Object.assign(defaultState(), remote); saveLocal(); setSyncStatus('sincronizado (baixado)'); }
+    else if((remote.updatedAt||0) < (state.updatedAt||0)){ await updateAppDataFile(file.id, state).then(()=> setSyncStatus('sincronizado (subido)')).catch(e=>{ console.error('update fail',e); setSyncStatus('erro ao subir'); }); }
+    else setSyncStatus('sincronizado');
+  } else setSyncStatus('erro ao baixar');
+}
+
+async function saveToDriveNow(){
+  if(!gapiInited) await initGapi();
+  if(!gapiAuthInstance.isSignedIn.get()) return;
+  const file = await findAppDataFile().catch(()=>null);
+  if(!file) await createAppDataFile(state).catch(e=>console.error(e));
+  else await updateAppDataFile(file.id, state).catch(e=>console.error(e));
+  setSyncStatus('sincronizado (atualizado)');
+}
+
+/* debounce save */
+let _saveTimer = null;
+function scheduleSave(){
+  saveLocal();
+  if(_saveTimer) clearTimeout(_saveTimer);
+  _saveTimer = setTimeout(()=>{ if(gapiInited && gapiAuthInstance && gapiAuthInstance.isSignedIn.get()) saveToDriveNow(); else setSyncStatus('offline (salvo local)'); }, 900);
+}
+
+/* Auth UI */
+function updateAuthUI(){
+  const authArea = document.getElementById('authArea'); authArea.innerHTML = '';
+  const signed = gapiInited && gapiAuthInstance && gapiAuthInstance.isSignedIn.get();
+  if(signed){
+    const profile = gapiAuthInstance.currentUser.get().getBasicProfile();
+    const email = profile ? profile.getEmail() : 'usuário';
+    const btn = document.createElement('button'); btn.className='small btn-ghost'; btn.textContent = 'Sair: ' + email; btn.onclick = ()=> signOut();
+    authArea.appendChild(btn);
+  } else {
+    const btn = document.createElement('button'); btn.className='small'; btn.textContent='Entrar com Google'; btn.onclick = ()=> signIn();
+    authArea.appendChild(btn);
+  }
+}
+function onSignInSuccess(){ updateAuthUI(); setSyncStatus('autenticado, sincronizando...'); loadFromDriveOrCreate().then(()=> renderActiveContest()).catch(e=>{ console.error(e); setSyncStatus('erro'); }); }
+function setSyncStatus(txt){ document.getElementById('syncStatus').textContent = 'Status: ' + txt; }
+
+/* boot */
+async function boot(){
+  state = loadLocal();
+  renderActiveContest();
+  try{ await initGapi(); updateAuthUI(); if(gapiAuthInstance.isSignedIn.get()){ setSyncStatus('autenticado, sincronizando...'); await loadFromDriveOrCreate(); renderActiveContest(); } }catch(e){ console.warn('gapi init error (ignored):', e); updateAuthUI(); }
+}
+boot();
+
+/* UI helpers & rendering (same as earlier, optimized) */
+function renderMateriaStateButton(btn, value){ btn.innerHTML = value===1 ? '✓' : value===0.5 ? '●' : ''; btn.style.background = value===1 ? 'var(--primary)' : 'transparent'; btn.style.color = value===1 ? 'white' : 'var(--muted)'; }
+function calculateMateriaPercent(mat){ const assuntos = MATERIAS[mat]||[]; if(!assuntos.length) return 0; let sum=0; assuntos.forEach(a=> sum += (state.materias[mat][a]||0)); return (sum/assuntos.length)*100; }
+function calculateConcursoPercent(concurso){ const mats = CONCURSOS[concurso]||[]; if(!mats.length) return 0; let sum=0; mats.forEach(m=> sum += calculateMateriaPercent(m)); return Math.round(sum/mats.length); }
+function calculateGlobalPercent(){ return Math.round((calculateConcursoPercent('pc_ba') + calculateConcursoPercent('prf_adm'))/2); }
+function animateRing(percent){ const c=2*Math.PI*52; const offset=c*(1-percent/100); const fg = document.querySelector('#progressRingSvg circle:nth-child(2)'); fg.style.transition='stroke-dashoffset .6s ease'; fg.style.strokeDashoffset = offset; document.getElementById('ringNum').textContent = percent + '%'; }
+function updateProgressUI(){ const p = calculateConcursoPercent(activeContest); document.getElementById('percentText').textContent = p + '%'; document.getElementById('sidePercent').textContent = p + '%'; document.getElementById('globalPercent').textContent = calculateGlobalPercent() + '%'; animateRing(p); }
+function renderContestList(){ document.querySelectorAll('.contest-item').forEach(el=> el.classList.toggle('active', el.dataset.key === activeContest)); }
+function updateMateriaHeader(materia){ document.querySelectorAll('.materia').forEach(card=>{ const head = card.querySelector('.materia-head'); if(head && head.dataset.mat === materia){ const pct = Math.round(calculateMateriaPercent(materia)); head.querySelector('.materia-meta').innerHTML = `${MATERIAS[materia].length} assuntos • Progresso: <strong>${pct}%</strong>`; const pctBox = head.querySelector('.materia-head-percent'); if(pctBox) pctBox.textContent = pct + '%'; } }); }
+
+function renderActiveContest(){ renderContestList(); document.getElementById('pageTitle').textContent = activeContest === 'pc_ba' ? 'Polícia Civil - PC-BA' : 'PRF Administrativo'; document.getElementById('ringLabel').textContent = activeContest === 'pc_ba' ? 'PC-BA' : 'PRF-ADM'; renderMateriaAccordion(); updateProgressUI(); }
+
+function renderMateriaAccordion(){
+  const container = document.getElementById('subjectList'); container.innerHTML = '';
+  CONCURSOS[activeContest].forEach(mat=>{
+    const pct = Math.round(calculateMateriaPercent(mat));
+    const card = document.createElement('div'); card.className='materia';
+    card.innerHTML = `
+      <div class="materia-head" data-mat="${mat}">
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="width:10px;height:40px;border-radius:6px;background:var(--primary)"></div>
+          <div><div class="materia-title">${mat}</div><div class="materia-meta">${MATERIAS[mat].length} assuntos • Progresso: <strong>${pct}%</strong></div></div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center">
+          <div class="materia-head-percent" style="font-weight:700">${pct}%</div>
+          <button class="note-btn small" data-note="${mat}">📝 Nota</button>
+        </div>
+      </div>
+      <div class="assuntos" data-mat="${mat}">
+        ${MATERIAS[mat].map(a=>`<div class="assunto"><div class="state-btn" data-sub="${a}"></div><div>${a}</div></div>`).join('')}
+      </div>
+    `;
+    const head = card.querySelector('.materia-head'); const assuntosEl = card.querySelector('.assuntos');
+    head.addEventListener('click', e=>{ if(e.target && e.target.matches('.note-btn')) return; assuntosEl.style.display = assuntosEl.style.display === 'flex' ? 'none' : 'flex'; });
+    head.querySelector('.note-btn').addEventListener('click', e=>{ e.stopPropagation(); openNoteModal(mat); });
+
+    card.querySelectorAll('.state-btn').forEach(btn=>{
+      const assunto = btn.dataset.sub; const val = state.materias[mat][assunto]||0; renderMateriaStateButton(btn,val);
+      btn.addEventListener('click', e=>{ e.stopPropagation(); let v = state.materias[mat][assunto]||0; v = v===0 ? 0.5 : v===0.5 ? 1 : 0; state.materias[mat][assunto]=v; renderMateriaStateButton(btn,v); updateMateriaHeader(mat); updateProgressUI(); scheduleSave(); });
+    });
+
+    container.appendChild(card);
+  });
+}
+
+/* MODAL NOTAS */
+const modal = document.getElementById('modalBackdrop'); const noteArea = document.getElementById('noteArea'); let currentMateria=null;
+function openNoteModal(mat){ currentMateria = mat; document.getElementById('modalTitle').textContent = 'Notas: ' + mat; noteArea.value = state.notes[mat] || ''; modal.style.display = 'flex'; noteArea.focus(); }
+document.getElementById('closeModal').addEventListener('click', ()=>{ modal.style.display='none'; currentMateria=null; });
+document.getElementById('saveNote').addEventListener('click', ()=>{ if(currentMateria){ state.notes[currentMateria] = noteArea.value; scheduleSave(); } modal.style.display='none'; currentMateria=null; });
+document.getElementById('deleteNote').addEventListener('click', ()=>{ if(currentMateria){ delete state.notes[currentMateria]; scheduleSave(); } noteArea.value=''; });
+
+/* export/import */
+document.getElementById('exportBtn').addEventListener('click', ()=>{ const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='progresso_estudos.json'; a.click(); URL.revokeObjectURL(url); });
+document.getElementById('importBtn').addEventListener('click', ()=>{ const inp=document.createElement('input'); inp.type='file'; inp.accept='application/json'; inp.addEventListener('change', async e=>{ const f=e.target.files[0]; if(!f) return; const txt=await f.text(); try{ const parsed=JSON.parse(txt); state = Object.assign(defaultState(), parsed); saveLocal(); renderActiveContest(); alert('Import ok'); }catch(err){ alert('Arquivo inválido'); } }); inp.click(); });
+
+/* contests click */
+document.querySelectorAll('.contest-item').forEach(el=> el.addEventListener('click', ()=>{ activeContest = el.dataset.key; renderActiveContest(); }));
+
+/* sync button => triggers signIn/init */
+document.getElementById('syncBtn').addEventListener('click', ()=>{ if(!gapiInited) initGapi().then(()=>signIn()).catch(e=>console.warn(e)); else signIn(); });
+
+/* clear cache button */
+document.getElementById('clearCaches').addEventListener('click', async ()=>{
+  if(navigator.serviceWorker){ const regs = await navigator.serviceWorker.getRegistrations(); for(const r of regs) await r.unregister(); }
+  if(window.caches){ const keys = await caches.keys(); for(const k of keys) await caches.delete(k); }
+  alert('Service worker e caches removidos. Recarregue (Ctrl+F5).');
+});
+
+/* expose debug */
+window.STUDYAPP = { stateRef:()=>state, scheduleSave, initGapi };
+
+/* initial render */
+renderActiveContest();
+</script>
+
+<script>
+if('serviceWorker' in navigator){ navigator.serviceWorker.register('./service-worker.js').then(()=>console.log('SW registered')).catch(e=>console.warn('SW reg failed',e)); }
+</script>
+
+</body>
+</html>
