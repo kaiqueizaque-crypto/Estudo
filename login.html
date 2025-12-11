@@ -40,27 +40,30 @@ body {
 </head>
 <body>
 
-<div class="card">
-  <h2>Plano de Estudos</h2>
-  <p>Entre com Google para sincronizar com o Drive.</p>
-
-  <div id="g_id_onload"
-       data-client_id="553818652026-vjsmkokm1pibph3ehai36q3pmbp8js88.apps.googleusercontent.com"
-       data-context="signin"
-       data-ux_mode="redirect"
-       data-login_uri="https://kaiqueizaque-crypto.github.io/Estudo/index.html"
-       data-auto_select="false">
-  </div>
-
-  <div class="g_id_signin"
-       data-type="standard"
-       data-shape="rectangular"
-       data-theme="filled_blue"
-       data-text="signin_with"
-       data-size="large">
-  </div>
-
+<div id="g_id_onload"
+     data-client_id="553818652026-vjsmkokm1pibph3ehai36q3pmbp8js88.apps.googleusercontent.com"
+     data-context="signin"
+     data-ux_mode="popup"
+     data-callback="handleCredentialResponse"
+     data-auto_select="false">
 </div>
+
+<div class="g_id_signin"
+     data-type="standard"
+     data-shape="rectangular"
+     data-theme="filled_blue"
+     data-text="signin_with"
+     data-size="large">
+</div>
+
+<script>
+function handleCredentialResponse(response) {
+    // Salvar token e redirecionar pro app
+    localStorage.setItem("google_credential", response.credential);
+    window.location.href = "index.html";
+}
+</script>
 
 </body>
 </html>
+
