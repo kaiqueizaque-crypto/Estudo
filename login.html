@@ -2,84 +2,65 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Login — Plano de Estudos</title>
+
 <style>
-  body{font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;margin:0;background:#f5f7fb;display:flex;align-items:center;justify-content:center;height:100vh}
-  .card{width:420px;background:#fff;border-radius:12px;padding:24px;box-shadow:0 8px 30px rgba(10,20,40,0.08);text-align:center}
-  h1{color:#0b5ea8;margin:0 0 8px}p{color:#6b7280}
-  button{margin-top:18px;background:#0b5ea8;color:#fff;border:none;padding:10px 14px;border-radius:8px;cursor:pointer;font-size:15px}
-  .hint{margin-top:10px;color:#9aa6b2;font-size:13px}
+body {
+  margin: 0;
+  background: #eef2f7;
+  font-family: Inter, Arial;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+}
+.card {
+  background: white;
+  padding: 26px;
+  border-radius: 12px;
+  width: 360px;
+  text-align: center;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+}
+.btn {
+  background: #0b5ea8;
+  color: white;
+  border: 0;
+  padding: 10px 18px;
+  font-size: 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  margin-top: 20px;
+}
 </style>
+
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+
 </head>
 <body>
-  <div class="card">
-    <h1>Plano de Estudos</h1>
-    <p>Entre com sua conta Google para sincronizar o progresso com o Google Drive (AppData).</p>
-    <button id="signinBtn">Entrar com Google</button>
-    <div class="hint">Se o popup ficar bloqueado, permita popups para este site.</div>
+
+<div class="card">
+  <h2>Plano de Estudos</h2>
+  <p>Entre com Google para sincronizar com o Drive.</p>
+
+  <div id="g_id_onload"
+       data-client_id="553818652026-vjsmkokm1pibph3ehai36q3pmbp8js88.apps.googleusercontent.com"
+       data-context="signin"
+       data-ux_mode="redirect"
+       data-login_uri="https://kaiqueizaque-crypto.github.io/Estudo/index.html"
+       data-auto_select="false">
   </div>
 
-<script>
-/* CONFIG */
-const CLIENT_ID = "553818652026-vjsmkokm1pibph3ehai36q3pmbp8js88.apps.googleusercontent.com";
-const SCOPES = "https://www.googleapis.com/auth/drive.appdata";
+  <div class="g_id_signin"
+       data-type="standard"
+       data-shape="rectangular"
+       data-theme="filled_blue"
+       data-text="signin_with"
+       data-size="large">
+  </div>
 
-/* carregamento seguro do gapi (async + onload) */
-(function loadGapi(){
-  const s = document.createElement('script');
-  s.src = "https://apis.google.com/js/api.js";
-  s.async = true; s.defer = true; s.crossOrigin = "anonymous";
-  s.onload = onGapiScriptLoad;
-  document.head.appendChild(s);
-})();
+</div>
 
-let _gapiLoadAttempted=false, gapiInited=false, gapiAuthInstance=null;
-
-function onGapiScriptLoad(){
-  if(!_gapiLoadAttempted){
-    _gapiLoadAttempted = true;
-    if(typeof gapi === 'undefined'){ console.error('gapi not found after load'); return; }
-    gapi.load('client:auth2', initGapiSafe);
-  }
-}
-
-async function initGapiSafe(retries=0){
-  try{
-    if(typeof gapi === 'undefined'){
-      if(retries < 3){ setTimeout(()=> initGapiSafe(retries+1), 400); return; }
-      throw new Error('gapi unavailable');
-    }
-    await gapi.client.init({
-      clientId: CLIENT_ID,
-      discoveryDocs: ["https://www.googleapis.com/discovery/v1/apis/drive/v3/rest"],
-      scope: SCOPES
-    });
-    gapiInited = true;
-    gapiAuthInstance = gapi.auth2.getAuthInstance();
-    // se já estiver logado, redireciona direto
-    if(gapiAuthInstance.isSignedIn.get()){
-      window.location.href = './index.html';
-    }
-  }catch(err){
-    console.warn('initGapiSafe error', err);
-  }
-}
-
-async function handleSignInClick(){
-  try{
-    if(!gapiInited) await initGapiSafe();
-    if(!gapiAuthInstance) gapiAuthInstance = gapi.auth2.getAuthInstance();
-    await gapiAuthInstance.signIn();
-    // sucesso: redireciona para app principal
-    window.location.href = './index.html';
-  }catch(e){
-    console.error('signIn failed', e);
-    alert('Falha ao autenticar. Verifique console e cookies de terceiros (permita cookies e popups).');
-  }
-}
-
-document.getElementById('signinBtn').addEventListener('click', handleSignInClick);
-</script>
 </body>
 </html>
