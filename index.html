@@ -91,6 +91,27 @@ button{cursor:pointer;border:0;padding:8px 12px;border-radius:8px;background:var
 </div>
 
 <script type="module">
+const token = localStorage.getItem("g_token");
+
+if (!token) {
+    // Usuário não autenticado → voltar pro login
+    window.location.href = "./login.html";
+}
+
+  async function driveRequest(path, method = "GET", body = null) {
+    const token = localStorage.getItem("g_token");
+
+    const res = await fetch("https://www.googleapis.com/drive/v3" + path, {
+        method,
+        headers: {
+            "Authorization": "Bearer " + token,
+            "Content-Type": "application/json"
+        },
+        body: body ? JSON.stringify(body) : null
+    });
+
+    return res.json();
+}
 
 /* IMPORTA O MÓDULO DE AUTENTICAÇÃO */
 import { 
@@ -190,3 +211,4 @@ document.getElementById("pageContainer").innerHTML = `
 
 </body>
 </html>
+
