@@ -1,124 +1,123 @@
 /* ============================================================
    /js/app.js
-   Boot principal do aplicativo
+   Inicialização principal do aplicativo
 ============================================================ */
 
 import { loadSavedToken, logout } from "./auth.js";
-import { initState, saveLocal, state } from "./state.js";
-import { initLayout, renderActiveContest } from "./ui.js";
+import { state, saveLocal } from "./state.js";
 import { syncNow } from "./sync.js";
-import { loadFileAsText } from "./util.js";
+import { renderMaterias } from "./ui.js";
+
+/* -------------------------
+   BOTÕES E ELEMENTOS
+-------------------------- */
+const btnLogout = document.getElementById("btnLogout");
+const btnExport = document.getElementById("btnExport");
+const btnImport = document.getElementById("btnImport");
+const btnSync   = document.getElementById("btnSync");
+const btnPwa    = document.getElementById("btnPwa");
+
+/* -------------------------
+   EXPORTAR JSON
+-------------------------- */
+function exportJSON() {
+  const data = state.export();
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "progresso_estudos.json";
+  a.click();
+}
+
+/* -------------------------
+   IMPORTAR JSON
+-------------------------- */
+function importJSON() {
+  const input = document.createElement("input");
+  input.type = "file";
+  input.accept = "application/json";
+
+  input.onchange = () => {
+    const file = input.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const data = JSON.parse(reader.result);
+        saveLocal(data);
+        renderMaterias();
+        alert("Importado com sucesso!");
+      } catch (e) {
+        alert("Arquivo JSON inválido.");
+      }
+    };
+
+    reader.readAsText(file);
+  };
+
+  input.click();
+}
+
+/* -------------------------
+   Limpar cache PWA
+-------------------------- */
+async function clearPwaCache() {
+  if (!("caches" in window)) {
+    alert("O navegador não suporta Cache API.");
+    return;
+  }
+
+  const list = await caches.keys();
+  for (const key of list) {
+    await caches.delete(key);
+  }
+
+  alert("Cache PWA limpo! Recarregue o app.");
+}
 
 /* ============================================================
-   FUNÇÃO DE INICIALIZAÇÃO
+   BOOT PRINCIPAL
 ============================================================ */
-async function boot() {
 
-  /* 1) Verificar token de login */
+async function boot() {
+  console.log("Iniciando aplicação...");
+
+  // 1. Verificar login
   const token = loadSavedToken();
   if (!token) {
-    console.warn("Token ausente → redirecionando para login...");
+    console.warn("Usuário não logado — redirecionando");
     window.location.href = "./login.html";
     return;
   }
 
-  /* 2) Carregar estado local */
-  initState();
+  console.log("Usuário autenticado");
 
-  /* 3) Montar interface */
-  initLayout();
+  // 2. Renderizar UI inicial
+  renderMaterias();
 
-  /* 4) Mostrar app */
-  document.getElementById("app").style.display = "grid";
-
-  /* 5) Sincronizar imediatamente após login */
-  await syncNow();
-
-  /* 6) Configurar botões da Sidebar */
-  setupButtons();
+  // 3. Sincronização automática ao abrir
+  try {
+    await syncNow();
+  } catch (err) {
+    console.error("Erro na sincronização inicial:", err);
+  }
 
   console.log("APP iniciado com sucesso!");
 }
 
 /* ============================================================
-   CONFIGURAÇÃO DOS BOTÕES
+   EVENTOS
 ============================================================ */
-function setupButtons() {
 
-  /* BOTÃO → Exportar JSON */
-  document.getElementById("exportBtn").onclick = () => {
-    const blob = new Blob([JSON.stringify(state, null, 2)], {
-      type: "application/json"
-    });
-    const url = URL.createObjectURL(blob);
-
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "progresso_estudos.json";
-    a.click();
-
-    URL.revokeObjectURL(url);
-  };
-
-  /* BOTÃO → Importar JSON */
-  document.getElementById("importBtn").onclick = () => {
-    const inp = document.createElement("input");
-    inp.type = "file";
-    inp.accept = "application/json";
-
-    inp.onchange = async (ev) => {
-      const file = ev.target.files[0];
-      if (!file) return;
-
-      try {
-        const txt = await loadFileAsText(file);
-        const parsed = JSON.parse(txt);
-
-        Object.assign(state, parsed);
-        saveLocal(state);
-        renderActiveContest();
-
-        alert("Importado com sucesso!");
-
-      } catch (e) {
-        alert("Arquivo JSON inválido.");
-        console.error(e);
-      }
-    };
-
-    inp.click();
-  };
-
-  /* BOTÃO → Sincronizar manualmente */
-  document.getElementById("syncBtn").onclick = () => {
-    syncNow();
-  };
-
-  /* BOTÃO → Logout */
-  document.getElementById("authArea").innerHTML = `
-    <button id="logoutBtn" class="small btn-ghost">Sair da conta</button>
-  `;
-  document.getElementById("logoutBtn").onclick = () => logout();
-
-  /* BOTÃO → Limpar cache PWA */
-  const clearBtn = document.getElementById("clearCaches");
-  if (clearBtn) {
-    clearBtn.onclick = async () => {
-      if (navigator.serviceWorker) {
-        const regs = await navigator.serviceWorker.getRegistrations();
-        for (const r of regs) await r.unregister();
-      }
-      if (window.caches) {
-        const keys = await caches.keys();
-        for (const k of keys) await caches.delete(k);
-      }
-      alert("Cache PWA limpo. Recarregue (Ctrl + F5).");
-    };
-  }
-}
+btnLogout?.addEventListener("click", logout);
+btnExport?.addEventListener("click", exportJSON);
+btnImport?.addEventListener("click", importJSON);
+btnSync?.addEventListener("click", syncNow);
+btnPwa?.addEventListener("click", clearPwaCache);
 
 /* ============================================================
-   Iniciar aplicação
+   INICIAR APLICAÇÃO
 ============================================================ */
 boot();
-
