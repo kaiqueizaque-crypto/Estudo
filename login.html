@@ -80,7 +80,6 @@ window.onload = () => {
 async function handleCredential(response) {
     try {
         await saveTokenAfterLogin(response.credential);
-
         window.location.href = "./index.html";
 
     } catch (e) {
@@ -90,8 +89,8 @@ async function handleCredential(response) {
 }
 </script>
 
-
 </body>
 </html>
+
 
 
