@@ -95,12 +95,7 @@ export async function syncNow() {
     // 2. Procurar arquivo remoto
     const file = await findAppDataFile(DRIVE_FILENAME);
 
-    if (!file) {
-      // Criar novo remoto com estado local
-      await createAppDataFile(state);
-      setSyncStatus("sincronizado (criado)");
-      return;
-    }
+    await createAppDataFile(data);
 
     // 3. Baixar remoto
     const remote = await downloadAppDataFile(file.id);
@@ -149,3 +144,4 @@ export function scheduleSave() {
     syncNow();
   }, 900);
 }
+
