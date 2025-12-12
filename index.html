@@ -130,13 +130,9 @@ button{cursor:pointer;border:0;padding:8px 12px;border-radius:8px;background:var
 
 <div class="modal-backdrop" id="modalBackdrop"><div class="modal"><h3 id="modalTitle">Notas</h3><textarea id="noteArea" placeholder="Anotações por matéria..."></textarea><div class="footer-row"><button id="closeModal" class="btn-ghost small">Fechar</button><button id="deleteNote" class="btn-ghost small">Apagar</button><button id="saveNote" class="small">Salvar</button></div></div></div>
 
-<script type="module">
-/* ============================
-   Imports (auth helpers)
-   - requires auth.js exports:
-       loadSavedToken, logout,
-       findAppDataFile, createAppDataFile, updateAppDataFile, downloadAppDataFile
-   ============================ */
+/* ============================================================
+   1. Imports
+============================================================ */
 import {
   loadSavedToken,
   logout,
@@ -145,6 +141,153 @@ import {
   updateAppDataFile,
   downloadAppDataFile
 } from './auth.js';
+
+/* ============================================================
+   2. Verificar login
+============================================================ */
+const token = loadSavedToken();
+
+if (!token) {
+  window.location.href = "./login.html";
+}
+
+
+/* ============================================================
+   3. Estado local do app
+============================================================ */
+const STORAGE_KEY = "progresso_estudos_v1";
+
+function loadLocal() {
+  const raw = localStorage.getItem(STORAGE_KEY);
+  if (!raw) {
+    return { materias: {}, notes: {}, updatedAt: 0 };
+  }
+  return JSON.parse(raw);
+}
+
+function saveLocal(state) {
+  state.updatedAt = Date.now();
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+
+let state = loadLocal();
+
+
+/* ============================================================
+   4. Função de MERGE Inteligente
+============================================================ */
+function mergeStates(local, remote) {
+  const merged = JSON.parse(JSON.stringify(local)); // clone profundo
+
+  /* --- MATERIAS / ASSUNTOS --- */
+  for (const materia of Object.keys(remote.materias || {})) {
+    if (!merged.materias[materia]) merged.materias[materia] = {};
+
+    for (const assunto of Object.keys(remote.materias[materia])) {
+      const localValue = merged.materias[materia][assunto] ?? 0;
+      const remoteValue = remote.materias[materia][assunto] ?? 0;
+
+      merged.materias[materia][assunto] = Math.max(localValue, remoteValue);
+    }
+  }
+
+  /* --- NOTAS --- */
+  for (const materia of Object.keys(remote.notes || {})) {
+    if (!merged.notes[materia]) {
+      merged.notes[materia] = remote.notes[materia];
+    } else {
+      merged.notes[materia] =
+        merged.notes[materia].length > remote.notes[materia].length
+        ? merged.notes[materia]
+        : remote.notes[materia];
+    }
+  }
+
+  merged.updatedAt = Math.max(local.updatedAt, remote.updatedAt);
+
+  return merged;
+}
+
+
+/* ============================================================
+   5. Sincronização com Drive usando MERGE
+============================================================ */
+const DRIVE_FILENAME = "progresso_estudos.json";
+
+async function saveToDriveNow() {
+  try {
+    const file = await findAppDataFile(DRIVE_FILENAME).catch(() => null);
+
+    if (!file) {
+      await createAppDataFile(DRIVE_FILENAME, state);
+      setSyncStatus("Criado no Drive");
+      return;
+    }
+
+    const remote = await downloadAppDataFile(file.id).catch(() => null);
+
+    if (!remote) {
+      console.warn("Arquivo remoto não pôde ser baixado.");
+      return;
+    }
+
+    // Merge local + remoto
+    const merged = mergeStates(state, remote);
+
+    state = merged;
+    saveLocal(state);
+
+    await updateAppDataFile(file.id, state);
+    setSyncStatus("Sincronizado (merge)");
+
+  } catch (e) {
+    console.error("Erro de sincronização:", e);
+    setSyncStatus("Erro ao sincronizar");
+  }
+}
+
+/* ============================================================
+   6. Schedule seguro (evita flood)
+============================================================ */
+let _saveTimer = null;
+
+function scheduleSave() {
+  saveLocal(state);
+
+  if (_saveTimer) clearTimeout(_saveTimer);
+
+  _saveTimer = setTimeout(async () => {
+    setSyncStatus("Sincronizando (merge)...");
+    await saveToDriveNow();
+  }, 700);
+}
+
+
+/* ============================================================
+   7. UI — Logout e botão Sync
+============================================================ */
+
+document.getElementById("logoutBtn")?.addEventListener("click", logout);
+
+document.getElementById("syncBtn")?.addEventListener("click", () => {
+  setSyncStatus("Sincronizando (merge)...");
+  saveToDriveNow();
+});
+
+function setSyncStatus(msg) {
+  const el = document.getElementById("syncStatus");
+  if (el) el.textContent = msg;
+}
+
+
+/* ============================================================
+   8. Inicializar a aplicação
+============================================================ */
+window.onload = () => {
+  document.getElementById("app").style.display = "grid";
+  setSyncStatus("Pronto");
+};
+
 
 /* ------------------------
    Basic config + data
@@ -552,4 +695,5 @@ window.saveNow = async ()=> { await saveToDriveNow(); };
 
 </body>
 </html>
+
 
