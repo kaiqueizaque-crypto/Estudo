@@ -3,7 +3,7 @@
    Boot principal do aplicativo
 ============================================================ */
 
-import { loadSavedToken, logout } from "../auth.js";
+import { loadSavedToken, logout } from "./auth.js";
 import { initState, saveLocal, state } from "./state.js";
 import { initLayout, renderActiveContest } from "./ui.js";
 import { syncNow } from "./sync.js";
@@ -121,3 +121,4 @@ function setupButtons() {
    Iniciar aplicação
 ============================================================ */
 boot();
+
