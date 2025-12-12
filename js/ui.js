@@ -13,7 +13,7 @@ import {
   saveLocal
 } from "./state.js";
 
-import { scheduleSave } from "./sync.js";
+
 
 /* ------------------------------------------------------------
    Elementos em cache
@@ -314,3 +314,4 @@ export function openNoteModal(materia) {
   el.noteArea.value = state.notes[materia] || "";
   el.modalBackdrop.style.display = "flex";
 }
+
