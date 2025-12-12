@@ -1,100 +1,72 @@
-/* ============================================================
-   util.js — Funções auxiliares usadas por toda a aplicação
-============================================================ */
+// ======================================================
+// util.js — Funções utilitárias e merge inteligente
+// ======================================================
 
-/* --------------------------------------------
-   Seleção rápida
--------------------------------------------- */
-export function el(id) {
-  return document.getElementById(id);
-}
-
-export function qs(selector) {
-  return document.querySelector(selector);
-}
-
-export function qsa(selector) {
-  return Array.from(document.querySelectorAll(selector));
-}
-
-
-/* --------------------------------------------
-   Deep clone universal (seguro)
--------------------------------------------- */
+// Atualiza estado local
 export function deepClone(obj) {
-  return JSON.parse(JSON.stringify(obj));
+    return JSON.parse(JSON.stringify(obj));
 }
 
+// ------------------------------------------------------
+// Merge inteligente do progresso
+// ------------------------------------------------------
+export function mergeStates(local, remote) {
+    const merged = deepClone(local);
 
-/* --------------------------------------------
-   Debounce universal
--------------------------------------------- */
-export function debounce(fn, delay = 500) {
-  let t = null;
-  return (...args) => {
-    clearTimeout(t);
-    t = setTimeout(() => fn(...args), delay);
-  };
-}
+    // Cada estado deve ter: materias, notes, updatedAt
+    merged.materias = merged.materias || {};
+    merged.notes = merged.notes || {};
 
+    // -------------------------------------------
+    // MERGE DAS MATÉRIAS
+    // -------------------------------------------
+    for (const materia of Object.keys(remote.materias || {})) {
+        if (!merged.materias[materia]) {
+            merged.materias[materia] = remote.materias[materia];
+            continue;
+        }
 
-/* --------------------------------------------
-   Salvar e carregar JSON do LocalStorage
--------------------------------------------- */
-export function saveJSON(key, value) {
-  localStorage.setItem(key, JSON.stringify(value));
-}
+        // Merge de assuntos
+        const localAssuntos = merged.materias[materia].assuntos || {};
+        const remoteAssuntos = remote.materias[materia].assuntos || {};
 
-export function loadJSON(key, fallback = null) {
-  try {
-    const data = localStorage.getItem(key);
-    return data ? JSON.parse(data) : fallback;
-  } catch (e) {
-    console.warn("Erro ao ler JSON:", key, e);
-    return fallback;
-  }
-}
+        for (const assunto of Object.keys(remoteAssuntos)) {
+            if (!localAssuntos[assunto]) {
+                localAssuntos[assunto] = remoteAssuntos[assunto];
+                continue;
+            }
 
+            // Se ambos têm timestamp, escolhe o mais recente
+            const l = localAssuntos[assunto];
+            const r = remoteAssuntos[assunto];
 
-/* --------------------------------------------
-   Função auxiliar para downloads de JSON
--------------------------------------------- */
-export function downloadJSON(obj, filename) {
-  const blob = new Blob([JSON.stringify(obj, null, 2)], {
-    type: "application/json"
-  });
-  const url = URL.createObjectURL(blob);
+            if (!l.updatedAt || r.updatedAt > l.updatedAt) {
+                localAssuntos[assunto] = r;
+            }
+        }
 
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
+        merged.materias[materia].assuntos = localAssuntos;
+    }
 
-  URL.revokeObjectURL(url);
-}
+    // -------------------------------------------
+    // MERGE DAS NOTAS
+    // -------------------------------------------
+    for (const key of Object.keys(remote.notes || {})) {
+        if (!merged.notes[key]) {
+            merged.notes[key] = remote.notes[key];
+            continue;
+        }
 
+        // Se ambos têm timestamps, escolhe o mais recente
+        if (remote.notes[key].updatedAt > merged.notes[key].updatedAt) {
+            merged.notes[key] = remote.notes[key];
+        }
+    }
 
-/* --------------------------------------------
-   Detectar se está rodando em GitHub Pages
--------------------------------------------- */
-export function isGithubPages() {
-  return location.hostname.includes("github.io");
-}
+    // -------------------------------------------
+    // Timestamp final
+    // -------------------------------------------
+    merged.updatedAt = Math.max(local.updatedAt || 0, remote.updatedAt || 0);
 
-
-/* --------------------------------------------
-   Criar atraso (await sleep)
--------------------------------------------- */
-export function sleep(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
-
-
-/* --------------------------------------------
-   Log amigável
--------------------------------------------- */
-export function log(...msg) {
-  console.log("%c[EstudoApp]", "color:#0b5ea8;font-weight:bold;", ...msg);
+    return merged;
 }
