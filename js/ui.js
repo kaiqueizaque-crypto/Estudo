@@ -1,5 +1,6 @@
 /* ============================================================
-   UI.JS — Renderização da interface
+   /js/ui.js
+   Interface completa do aplicativo (matérias, accordion, notas)
 ============================================================ */
 
 import {
@@ -14,100 +15,84 @@ import {
 
 import { scheduleSave } from "./sync.js";
 
-
-/* ============================================================
-   Variáveis de cache de elementos
-============================================================ */
-
+/* ------------------------------------------------------------
+   Elementos em cache
+------------------------------------------------------------ */
 let activeContest = "pc_ba";
 
-const elements = {
+const el = {
   contestList: null,
-  mainContent: null,
-  modalBackdrop: null,
-  modalTitle: null,
-  noteArea: null,
-  closeModal: null,
-  deleteNote: null,
-  saveNote: null,
-  
+  pageContainer: null,
+
   percentText: null,
   sidePercent: null,
   globalPercent: null,
 
   progressCircle: null,
   ringNum: null,
-  ringLabel: null
+  ringLabel: null,
+
+  modalBackdrop: null,
+  modalTitle: null,
+  noteArea: null,
+  closeModal: null,
+  deleteNote: null,
+  saveNote: null
 };
 
 let currentMateria = null;
 
-
 /* ============================================================
-   Renderização do layout inicial
+   Inicialização da interface
 ============================================================ */
-
 export function initLayout() {
-  elements.contestList = document.getElementById("contestList");
-  elements.mainContent = document.getElementById("mainContent");
-  elements.modalBackdrop = document.getElementById("modalBackdrop");
-  elements.modalTitle = document.getElementById("modalTitle");
-  elements.noteArea = document.getElementById("noteArea");
-  elements.closeModal = document.getElementById("closeModal");
-  elements.deleteNote = document.getElementById("deleteNote");
-  elements.saveNote = document.getElementById("saveNote");
+  el.contestList = document.getElementById("contestList");
+  el.pageContainer = document.getElementById("pageContainer");
 
-  elements.progressCircle = document.querySelector('#progressRingSvg circle:nth-child(2)');
-  elements.ringNum = document.getElementById("ringNum");
-  elements.ringLabel = document.getElementById("ringLabel");
-
-  elements.percentText = document.getElementById("percentText");
-  elements.sidePercent = document.getElementById("sidePercent");
-  elements.globalPercent = document.getElementById("globalPercent");
-
-  setupContestList();
-  renderActiveContest();
+  el.modalBackdrop = document.getElementById("modalBackdrop");
+  el.modalTitle = document.getElementById("modalTitle");
+  el.noteArea = document.getElementById("noteArea");
+  el.closeModal = document.getElementById("closeModal");
+  el.deleteNote = document.getElementById("deleteNote");
+  el.saveNote = document.getElementById("saveNote");
 
   setupModalEvents();
+  renderContestList();
+  renderActiveContest();
 }
 
-
 /* ============================================================
-   Gerar lista de concursos
+   Renderizar lista de concursos
 ============================================================ */
-
-function setupContestList() {
-  elements.contestList.innerHTML = "";
+function renderContestList() {
+  el.contestList.innerHTML = "";
 
   Object.keys(CONCURSOS).forEach(key => {
     const div = document.createElement("div");
     div.className = "contest-item" + (key === activeContest ? " active" : "");
     div.dataset.key = key;
-    div.textContent = key === "pc_ba" ? "Polícia Civil - PC-BA" : "PRF Administrativo";
+    div.textContent = CONCURSOS[key];
 
     div.addEventListener("click", () => {
       activeContest = key;
+      state.selectedContest = key;
+      saveLocal();
       renderActiveContest();
     });
 
-    elements.contestList.appendChild(div);
+    el.contestList.appendChild(div);
   });
 }
 
-
 /* ============================================================
-   Renderizar conteúdo principal
+   Renderizar página principal do concurso
 ============================================================ */
-
 export function renderActiveContest() {
-  // Atualizar destaque do menu
-  document.querySelectorAll(".contest-item").forEach(div => {
-    div.classList.toggle("active", div.dataset.key === activeContest);
-  });
+  highlightActiveContest();
 
-  // Atualizar título do card
-  const title = activeContest === "pc_ba" ? "Polícia Civil - PC-BA" : "PRF Administrativo";
-  elements.mainContent.innerHTML = `
+  const title = CONCURSOS[activeContest];
+
+  el.pageContainer.innerHTML = `
     <div class="header">
       <div>
         <div class="title">${title}</div>
@@ -125,8 +110,10 @@ export function renderActiveContest() {
             <g transform="translate(60,60)">
               <circle r="52" fill="none" stroke="#e6eef8" stroke-width="12"></circle>
               <circle r="52" fill="none" stroke="var(--primary)" stroke-width="12"
-                stroke-linecap="round" stroke-dasharray="326.7256"
-                stroke-dashoffset="326.7256" transform="rotate(-90)">
+                stroke-linecap="round"
+                stroke-dasharray="326.7256"
+                stroke-dashoffset="326.7256"
+                transform="rotate(-90)">
               </circle>
               <text id="ringNum" x="0" y="6" font-size="16" text-anchor="middle"
                 fill="#0b2540" font-weight="700">0%</text>
@@ -143,6 +130,7 @@ export function renderActiveContest() {
           <strong>Matérias</strong>
           <div class="meta">Clique para expandir</div>
         </div>
+
         <div class="subject-list" id="subjectList"></div>
       </div>
 
@@ -159,29 +147,37 @@ export function renderActiveContest() {
     </div>
   `;
 
-  // Cachear novamente os elementos (eles foram recriados)
-  elements.percentText = document.getElementById("percentText");
-  elements.sidePercent = document.getElementById("sidePercent");
-  elements.globalPercent = document.getElementById("globalPercent");
-  elements.progressCircle = document.querySelector('#progressRingSvg circle:nth-child(2)');
-  elements.ringNum = document.getElementById("ringNum");
-  elements.ringLabel = document.getElementById("ringLabel");
+  // Re-cache elements created dynamically
+  el.percentText = document.getElementById("percentText");
+  el.sidePercent = document.getElementById("sidePercent");
+  el.globalPercent = document.getElementById("globalPercent");
+  el.progressCircle = document.querySelector('#progressRingSvg circle:nth-child(2)');
+  el.ringNum = document.getElementById("ringNum");
+  el.ringLabel = document.getElementById("ringLabel");
 
   renderMateriaAccordion();
   updateProgressUI();
 }
 
+/* ============================================================
+   Destaque do concurso ativo
+============================================================ */
+function highlightActiveContest() {
+  document.querySelectorAll(".contest-item").forEach(div => {
+    div.classList.toggle("active", div.dataset.key === activeContest);
+  });
+}
 
 /* ============================================================
-   Renderizar accordion de matérias
+   Accordion de matérias
 ============================================================ */
-
 function renderMateriaAccordion() {
-
   const container = document.getElementById("subjectList");
   container.innerHTML = "";
 
-  CONCURSOS[activeContest].forEach(materia => {
+  CONCURSOS[activeContest]; // future expansion
+
+  Object.keys(MATERIAS).forEach(materia => {
     const pct = calculateMateriaPercent(materia);
 
     const card = document.createElement("div");
@@ -204,15 +200,16 @@ function renderMateriaAccordion() {
       </div>
 
       <div class="assuntos" data-mat="${materia}">
-        ${MATERIAS[materia].map(a =>
-          `<div class="assunto">
+        ${MATERIAS[materia].map(a => `
+          <div class="assunto">
             <div class="state-btn" data-sub="${a}"></div>
             <div>${a}</div>
-          </div>`
-        ).join("")}
+          </div>
+        `).join("")}
       </div>
     `;
 
+    // Eventos
     const head = card.querySelector(".materia-head");
     const assuntosEl = card.querySelector(".assuntos");
 
@@ -229,6 +226,7 @@ function renderMateriaAccordion() {
     // Botões dos assuntos
     card.querySelectorAll(".state-btn").forEach(btn => {
       const assunto = btn.dataset.sub;
+
       updateStateBtn(btn, state.materias[materia][assunto]);
 
       btn.addEventListener("click", e => {
@@ -240,9 +238,9 @@ function renderMateriaAccordion() {
         state.materias[materia][assunto] = val;
 
         updateStateBtn(btn, val);
-        renderActiveContest(); // Atualiza tudo
         saveLocal();
         scheduleSave();
+        renderActiveContest();
       });
     });
 
@@ -250,8 +248,7 @@ function renderMateriaAccordion() {
   });
 }
 
-
-/* Botão de estado (0, 0.5, 1) */
+/* Botão estado */
 function updateStateBtn(btn, value) {
   btn.innerHTML =
     value === 1 ? "✓" :
@@ -261,18 +258,16 @@ function updateStateBtn(btn, value) {
   btn.style.color = value === 1 ? "white" : "var(--muted)";
 }
 
-
 /* ============================================================
-   Progresso geral
+   Atualizar progresso
 ============================================================ */
-
 function updateProgressUI() {
-  const pct = calculateConcursoPercent(activeContest);
+  const pct = calculateConcursoPercent(state.selectedContest);
   const global = calculateGlobalPercent();
 
-  elements.percentText.textContent = pct + "%";
-  elements.sidePercent.textContent = pct + "%";
-  elements.globalPercent.textContent = global + "%";
+  el.percentText.textContent = pct + "%";
+  el.sidePercent.textContent = pct + "%";
+  el.globalPercent.textContent = global + "%";
 
   animateRing(pct);
 }
@@ -280,46 +275,42 @@ function updateProgressUI() {
 function animateRing(percent) {
   const c = 2 * Math.PI * 52;
   const offset = c * (1 - percent / 100);
-
-  elements.progressCircle.style.transition = "stroke-dashoffset .6s ease";
-  elements.progressCircle.style.strokeDashoffset = offset;
-
-  elements.ringNum.textContent = percent + "%";
+  el.progressCircle.style.transition = "stroke-dashoffset .6s ease";
+  el.progressCircle.style.strokeDashoffset = offset;
+  el.ringNum.textContent = percent + "%";
 }
-
 
 /* ============================================================
    Modal de notas
 ============================================================ */
-
 function setupModalEvents() {
-  elements.closeModal.addEventListener("click", () => {
-    elements.modalBackdrop.style.display = "none";
+  el.closeModal.addEventListener("click", () => {
+    el.modalBackdrop.style.display = "none";
     currentMateria = null;
   });
 
-  elements.saveNote.addEventListener("click", () => {
+  el.saveNote.addEventListener("click", () => {
     if (currentMateria) {
-      state.notes[currentMateria] = elements.noteArea.value;
+      state.notes[currentMateria] = el.noteArea.value;
       saveLocal();
       scheduleSave();
     }
-    elements.modalBackdrop.style.display = "none";
+    el.modalBackdrop.style.display = "none";
   });
 
-  elements.deleteNote.addEventListener("click", () => {
+  el.deleteNote.addEventListener("click", () => {
     if (currentMateria) {
       delete state.notes[currentMateria];
       saveLocal();
       scheduleSave();
     }
-    elements.noteArea.value = "";
+    el.noteArea.value = "";
   });
 }
 
 export function openNoteModal(materia) {
   currentMateria = materia;
-  elements.modalTitle.textContent = "Notas: " + materia;
-  elements.noteArea.value = state.notes[materia] || "";
-  elements.modalBackdrop.style.display = "flex";
+  el.modalTitle.textContent = "Notas: " + materia;
+  el.noteArea.value = state.notes[materia] || "";
+  el.modalBackdrop.style.display = "flex";
 }
