@@ -1,0 +1,302 @@
+/* ==========================================================
+   STYLE.CSS — Layout completo do Plano de Estudos
+   Autor: Kaique (com modularização assistida)
+   ========================================================== */
+
+/* ================= BASES DO SISTEMA ================= */
+
+:root {
+    --primary: #0b5ea8;
+    --accent: #ff8a00;
+    --bg: #f5f7fb;
+    --card: #ffffff;
+    --muted: #6b7280;
+    --radius: 12px;
+    --shadow: 0 6px 18px rgba(15, 23, 42, 0.05);
+    font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    background: linear-gradient(180deg, var(--bg), #eef2f7);
+    color: #111827;
+}
+
+/* ================= LAYOUT PRINCIPAL ================= */
+
+.app {
+    display: grid;
+    grid-template-columns: 300px 1fr;
+    min-height: 100vh;
+    gap: 20px;
+    padding: 20px;
+}
+
+.card {
+    background: var(--card);
+    border-radius: var(--radius);
+    padding: 16px;
+    box-shadow: var(--shadow);
+}
+
+/* ================= SIDEBAR ================= */
+
+.sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+#logo {
+    width: 100%;
+    height: 70px;
+    object-fit: contain;
+    background: #fff;
+    padding: 8px;
+    border-radius: 10px;
+}
+
+h1 {
+    font-size: 20px;
+    color: var(--primary);
+    margin: 6px 0;
+}
+
+.meta {
+    font-size: 13px;
+    color: var(--muted);
+}
+
+/* Botões da sidebar */
+
+.controls {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+button {
+    cursor: pointer;
+    border: none;
+    padding: 10px 14px;
+    border-radius: 8px;
+    background: var(--primary);
+    color: white;
+    font-size: 14px;
+}
+
+button.small {
+    padding: 6px 8px;
+    font-size: 13px;
+}
+
+.btn-ghost {
+    background: transparent;
+    border: 1px solid rgba(11, 94, 168, 0.2);
+    color: var(--primary);
+}
+
+/* ================= CONCURSOS ================= */
+
+.contest-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.contest-item {
+    padding: 10px;
+    border-radius: 10px;
+    background: #f5f9ff;
+    cursor: pointer;
+    border: 1px solid rgba(11, 94, 168, 0.05);
+}
+
+.contest-item.active {
+    background: linear-gradient(90deg, var(--primary), #074b86);
+    color: white;
+}
+
+/* ================= ÁREA PRINCIPAL ================= */
+
+.main {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.title {
+    font-size: 24px;
+    font-weight: 600;
+    color: var(--primary);
+}
+
+/* ================= CARDS DO CONCURSO ================= */
+
+.contest-card {
+    display: grid;
+    grid-template-columns: 1fr 240px;
+    gap: 14px;
+    align-items: start;
+}
+
+/* =============== PROGRESSO CIRCULAR =============== */
+
+.rings {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+}
+
+.ring-outer {
+    width: 180px;
+    height: 180px;
+}
+
+.ring-label {
+    text-align: center;
+    font-size: 13px;
+    color: var(--muted);
+}
+
+/* ================= MATÉRIAS ================= */
+
+.subject-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-height: 650px;
+    overflow-y: auto;
+    padding-right: 6px;
+}
+
+.materia {
+    background: linear-gradient(180deg, #ffffff, #f8fbff);
+    border-radius: 10px;
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    padding: 6px;
+}
+
+.materia-head {
+    display: flex;
+    justify-content: space-between;
+    cursor: pointer;
+    padding: 6px;
+}
+
+.materia-title {
+    font-weight: 700;
+}
+
+.materia-meta {
+    font-size: 12px;
+    color: var(--muted);
+}
+
+.assuntos {
+    display: none;
+    flex-direction: column;
+    gap: 6px;
+    padding: 8px 10px;
+}
+
+.assunto {
+    background: #ffffff;
+    border-radius: 8px;
+    padding: 6px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border: 1px solid rgba(15, 23, 42, 0.06);
+}
+
+/* Botões dentro do assunto */
+
+.state-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    background: #fff;
+    border: 1px solid rgba(15, 23, 42, 0.15);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-weight: 700;
+}
+
+.note-btn {
+    margin-left: auto;
+    cursor: pointer;
+    color: var(--primary);
+    border: none;
+    background: transparent;
+}
+
+/* ================= MODAL DE NOTAS ================= */
+
+.modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.45);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    z-index: 999;
+}
+
+.modal {
+    background: white;
+    border-radius: 12px;
+    padding: 16px;
+    max-width: 900px;
+    width: 100%;
+    max-height: 85vh;
+    overflow: auto;
+}
+
+.modal textarea {
+    width: 100%;
+    height: 260px;
+    resize: vertical;
+    padding: 12px;
+    border-radius: 8px;
+}
+
+/* Botões do modal */
+
+.footer-row {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+/* ================= FOOTER / STATUS ================= */
+
+.status-line {
+    margin-top: 12px;
+    font-size: 13px;
+    color: var(--muted);
+}
+
+/* ================= RESPONSIVIDADE ================= */
+
+@media (max-width: 900px) {
+    .app {
+        grid-template-columns: 1fr;
+    }
+
+    .contest-card {
+        grid-template-columns: 1fr;
+    }
+
+    .sidebar {
+        flex-direction: column;
+    }
+}
