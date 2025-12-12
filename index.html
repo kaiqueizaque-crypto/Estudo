@@ -1,91 +1,499 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Plano de Estudos</title>
-
-  <link rel="stylesheet" href="./css/style.css">
-
-  <!-- Manifest + PWA -->
-  <link rel="manifest" href="./manifest.json" />
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Plano de Estudos — Unificado</title>
+  <style>
+    :root{--primary:#1a73e8;--muted:#6b7280}
+    body{font-family:Inter,system-ui,Arial,sans-serif;margin:0;background:#eef2f7;color:#0b2540}
+    .header-main{display:flex;align-items:center;gap:16px;padding:18px;background:#fff;box-shadow:0 2px 6px rgba(0,0,0,.06)}
+    .logo{width:96px;height:96px;border-radius:50%}
+    .header-info h1{margin:0;font-size:20px}
+    #syncStatus{font-size:13px;color:#666}
+    .header-actions{margin-left:auto}
+    .btn{padding:8px 12px;border-radius:8px;border:1px solid rgba(11,37,64,.06);background:#fff;cursor:pointer}
+    .btn.primary{background:var(--primary);color:#fff;border:none}
+    .btn.danger{background:#ea4335;color:#fff;border:none}
+    .main-container{display:flex;gap:16px;padding:18px}
+    .sidebar{width:240px}
+    .page-container{flex:1}
+    .contest-item{padding:10px;border-radius:8px;background:#fff;margin-bottom:8px;cursor:pointer}
+    .contest-item.active{background:var(--primary);color:#fff}
+    .card{background:#fff;padding:16px;border-radius:10px;box-shadow:0 6px 20px rgba(0,0,0,.06);margin-bottom:16px}
+    .subject-list .materia{margin-bottom:12px}
+    .materia-head{display:flex;justify-content:space-between;align-items:center;padding:10px;cursor:pointer}
+    .assuntos{display:flex;flex-direction:column;gap:8px;padding:10px 16px}
+    .state-btn{width:28px;height:28px;border-radius:6px;border:1px solid #e6eef8;display:flex;align-items:center;justify-content:center;cursor:pointer}
+    /* modal */
+    .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:999}
+    .modal{width:360px;background:#fff;border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:12px}
+    .modal-textarea{width:100%;height:140px;border:1px solid #e6eef8;border-radius:6px;padding:8px}
+    .modal-actions{display:flex;justify-content:space-between}
+    .ring-outer{width:80px;height:80px}
+    @media(max-width:900px){.main-container{flex-direction:column}.sidebar{width:100%}}
+  </style>
 </head>
-
 <body>
 
-  <!-- ============================================================
-       MODAL DE NOTAS (necessário para o ui.js)
-  ============================================================ -->
-  <div id="modalBackdrop" class="modal-backdrop" style="display:none;">
+  <!-- Modal -->
+  <div id="modalBackdrop" class="modal-backdrop" style="display:none">
     <div class="modal">
-      <div class="modal-header">
-        <span id="modalTitle">Notas</span>
-        <button id="closeModal" class="modal-close">X</button>
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <strong id="modalTitle">Notas</strong>
+        <button id="closeModal" class="btn">X</button>
       </div>
-
       <textarea id="noteArea" class="modal-textarea"></textarea>
-
       <div class="modal-actions">
-        <button id="deleteNote" class="btn danger">Excluir</button>
+        <button id="deleteNote" class="btn">Excluir</button>
         <button id="saveNote" class="btn primary">Salvar</button>
       </div>
     </div>
   </div>
 
-  <!-- ============================================================
-       CABEÇALHO
-  ============================================================ -->
   <header class="header-main">
-    <img src="./logo2.png" class="logo">
-
+    <img src="./logo2.png" class="logo" alt="logo">
     <div class="header-info">
       <h1>Plano de Estudos</h1>
       <div id="syncStatus">Status: aguardando</div>
     </div>
-
     <div class="header-actions">
       <button id="btnLogout" class="btn danger">Sair da conta</button>
     </div>
   </header>
 
-
-  <!-- ============================================================
-       CONTEÚDO PRINCIPAL
-  ============================================================ -->
   <main class="main-container">
-
-    <!-- Sidebar com concursos -->
     <aside class="sidebar">
-      <div id="contestList"></div>
-
-      <button id="btnSync" class="btn primary" style="margin-top:20px;">
-        Sincronizar Drive
-      </button>
-
-      <button id="btnClearCache" class="btn secondary" style="margin-top:10px;">
-        Limpar cache PWA
-      </button>
+      <div id="contestList" class="card"></div>
+      <div style="display:flex;gap:8px;margin-top:12px">
+        <button id="btnExport" class="btn">Exportar JSON</button>
+        <button id="btnImport" class="btn">Importar JSON</button>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:12px">
+        <button id="btnSync" class="btn primary">Sincronizar Drive</button>
+        <button id="btnPwa" class="btn">Limpar cache PWA</button>
+      </div>
     </aside>
 
-    <!-- Conteúdo -->
-    <section id="pageContainer" class="page-container">
-      <!-- Renderizado dinamicamente pelo ui.js -->
-    </section>
+    <section id="pageContainer" class="page-container"></section>
   </main>
 
-
-  <!-- ============================================================
-       SCRIPTS DO APLICATIVO
-  ============================================================ -->
-
-  <script type="module" src="./js/app.js"></script>
-
-  <!-- Service Worker -->
+  <!-- Monolithic scripts -->
   <script>
-    if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register("./service-worker.js");
-    }
-  </script>
+  /* ============================
+     AUTH (GIS/OAuth2 helpers)
+     ============================ */
+  const CLIENT_ID = "553818652026-vjsmkokm1pibph3ehai36q3pmbp8js88.apps.googleusercontent.com";
+  const SCOPE = "https://www.googleapis.com/auth/drive.appdata";
 
+  function decodeJwt(token){
+    try{
+      const parts = token.split(".");
+      const b = parts[1].replace(/-/g,"+").replace(/_/g,"/");
+      return JSON.parse(atob(b));
+    }catch(e){return {}}
+  }
+
+  function saveTokenAfterLogin(credential){
+    if(!credential) throw new Error("Credencial inválida");
+    const payload = decodeJwt(credential);
+    const tokenData = { token: credential, email: payload.email, exp: payload.exp, savedAt: Date.now() };
+    localStorage.setItem("g_token_data", JSON.stringify(tokenData));
+    console.log("Token salvo (id_token):", tokenData);
+  }
+
+  function loadSavedToken(){
+    const raw = localStorage.getItem("g_token_data");
+    if(!raw) return null;
+    try{
+      const data = JSON.parse(raw);
+      const now = Math.floor(Date.now()/1000);
+      if(data.exp && now>=data.exp){ localStorage.removeItem("g_token_data"); return null; }
+      return data.token;
+    }catch(e){return null}
+  }
+
+  function logout(){
+    localStorage.removeItem("g_token_data");
+    localStorage.removeItem("g_access_token");
+    window.location.href = "./login.html";
+  }
+
+  function requestAccessToken(){
+    return new Promise((resolve,reject)=>{
+      if(!window.google || !google.accounts || !google.accounts.oauth2){
+        return reject(new Error("Google OAuth2 client não disponível"));
+      }
+      const client = google.accounts.oauth2.initTokenClient({
+        client_id: CLIENT_ID,
+        scope: SCOPE,
+        callback: (resp)=> {
+          if(resp.error) return reject(resp);
+          localStorage.setItem("g_access_token", resp.access_token);
+          console.log("Access token obtido:", resp.access_token);
+          resolve(resp.access_token);
+        }
+      });
+      client.requestAccessToken();
+    });
+  }
+
+  function loadAccessToken(){ return localStorage.getItem("g_access_token") || null; }
+
+  async function driveGet(path){
+    const token = loadAccessToken();
+    if(!token) throw new Error("Access token ausente.");
+    const res = await fetch("https://www.googleapis.com/drive/v3"+path, { headers:{ Authorization: "Bearer "+token }});
+    if(!res.ok){ const txt = await res.text(); console.error("Erro Drive GET:", txt); throw new Error(txt); }
+    return await res.json();
+  }
+
+  async function driveSend(path, method, body, isMultipart=false){
+    const token = loadAccessToken();
+    if(!token) throw new Error("Access token ausente.");
+    const headers = { Authorization: "Bearer "+token };
+    if(!isMultipart) headers["Content-Type"]="application/json";
+    const res = await fetch("https://www.googleapis.com/upload/drive/v3"+path, { method, headers, body: isMultipart?body:JSON.stringify(body) });
+    if(!res.ok){ const txt = await res.text(); console.error("Erro Drive SEND:", txt); throw new Error(txt); }
+    return await res.json();
+  }
+
+  async function downloadAppDataFile(fileId){
+    const token = loadAccessToken();
+    if(!token) throw new Error("Access token ausente.");
+    const res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, { headers:{ Authorization: "Bearer "+token }});
+    if(!res.ok){ const txt = await res.text(); console.error("Erro download:", txt); throw new Error(txt); }
+    return await res.json();
+  }
+
+  const DRIVE_FILENAME = "progresso_estudos.json";
+
+  async function findAppDataFile(){
+    return driveGet(`/files?spaces=appDataFolder&q=name='${DRIVE_FILENAME}'&fields=files(id,name,modifiedTime)`)
+      .then(r=> r.files && r.files.length ? r.files[0] : null);
+  }
+
+  async function createAppDataFile(content){
+    const metadata = { name: DRIVE_FILENAME, parents:["appDataFolder"] };
+    const boundary = "-------314159265358979323846";
+    const delim = `\r\n--${boundary}\r\n`;
+    const close = `\r\n--${boundary}--`;
+    const body = delim + "Content-Type: application/json\r\n\r\n" + JSON.stringify(metadata) + delim + "Content-Type: application/json\r\n\r\n" + JSON.stringify(content) + close;
+    return driveSend("/files?uploadType=multipart&fields=id,modifiedTime","POST", body, true);
+  }
+
+  async function updateAppDataFile(fileId, content){
+    return driveSend(`/files/${fileId}?uploadType=media`,"PATCH", content);
+  }
+
+  /* ============================
+     STATE (local)
+     ============================ */
+  const defaultState = {
+    updatedAt: Date.now(),
+    selectedContest: "pc_ba",
+    materias: {}, notes:{}
+  };
+
+  // minimal MATERIAS (exemplo) — substitua pelos seus conteúdos reais
+  const MATERIAS = {
+    "Matemática": ["Álgebra","Geometria","Aritmética"],
+    "Português": ["Gramática","Interpretação"]
+  };
+  const CONCURSOS = { pc_ba:"Polícia Civil - PC-BA", prf:"PRF Administrativo" };
+
+  // inicializar estrutura materias no state
+  function buildEmptyMaterias(){
+    const m = {};
+    Object.keys(MATERIAS).forEach(k=>{
+      m[k] = {};
+      MATERIAS[k].forEach(a=> m[k][a]=0);
+    });
+    return m;
+  }
+
+  let state = JSON.parse(JSON.stringify(defaultState));
+  state.materias = buildEmptyMaterias();
+
+  function saveLocal(data){
+    const obj = data || state;
+    obj.updatedAt = Date.now();
+    localStorage.setItem("app_state_v1", JSON.stringify(obj));
+  }
+
+  function loadLocal(){
+    const raw = localStorage.getItem("app_state_v1");
+    if(!raw) return state;
+    try{ const s = JSON.parse(raw); state = Object.assign({}, defaultState, s); return state; }catch(e){ return state; }
+  }
+
+  function exportState(){ return JSON.parse(JSON.stringify(state)); }
+
+  function calculateMateriaPercent(name){
+    const subs = state.materias[name] || {};
+    const total = Object.keys(subs).length || 1;
+    let acc = 0;
+    Object.values(subs).forEach(v=> acc += (v===1?1:(v===0.5?0.5:0)));
+    return Math.round((acc/total)*100);
+  }
+  function calculateConcursoPercent(key){ // average of materias for now
+    const keys = Object.keys(MATERIAS);
+    const vals = keys.map(k=>calculateMateriaPercent(k));
+    const avg = vals.reduce((a,b)=>a+b,0)/vals.length;
+    return Math.round(avg);
+  }
+  function calculateGlobalPercent(){ return calculateConcursoPercent(state.selectedContest); }
+
+  /* ============================
+     SYNC (merge + drive)
+     ============================ */
+  function mergeStates(local, remote){
+    const merged = JSON.parse(JSON.stringify(defaultState));
+    merged.updatedAt = Math.max(local.updatedAt || 0, remote.updatedAt || 0);
+    merged.materias = {};
+    const ml = local.materias||{}, mr = remote.materias||{};
+    const all = new Set([...Object.keys(ml), ...Object.keys(mr)]);
+    all.forEach(m=>{
+      merged.materias[m] = {};
+      const aL = ml[m]||{}, aR = mr[m]||{};
+      const allA = new Set([...Object.keys(aL), ...Object.keys(aR)]);
+      allA.forEach(a=>{
+        const vL = aL[a]??0; const vR = aR[a]??0;
+        merged.materias[m][a] = Math.max(vL,vR);
+      });
+    });
+    merged.notes = Object.assign({}, local.notes||{}, remote.notes||{});
+    return merged;
+  }
+
+  async function syncNow(){
+    const elStatus = document.getElementById("syncStatus");
+    if(elStatus) elStatus.textContent = "Status: sincronizando...";
+    const t = loadSavedToken();
+    if(!t){ if(elStatus) elStatus.textContent = "Status: não autenticado"; return; }
+
+    try{
+      const file = await findAppDataFile();
+      if(!file){
+        await createAppDataFile(exportState());
+        if(elStatus) elStatus.textContent = "Status: criado no Drive";
+        return;
+      }
+
+      let remote = null;
+      try{ remote = await downloadAppDataFile(file.id); } catch(e){
+        console.warn("Erro ao baixar remoto:", e);
+        await createAppDataFile(exportState());
+        if(elStatus) elStatus.textContent = "Status: criado novo arquivo";
+        return;
+      }
+
+      const merged = mergeStates(exportState(), remote);
+      state = Object.assign({}, merged);
+      saveLocal();
+
+      try{
+        await updateAppDataFile(file.id, merged);
+        if(elStatus) elStatus.textContent = "Status: sincronizado";
+      }catch(err){
+        console.warn("Falha update, recriando:", err);
+        await createAppDataFile(merged);
+        if(elStatus) elStatus.textContent = "Status: arquivo recriado";
+      }
+    }catch(err){
+      console.error("Erro sync:", err);
+      if(elStatus) elStatus.textContent = "Status: erro";
+    }
+  }
+
+  /* ============================
+     UI (render + events)
+     ============================ */
+  // cache
+  let elCache = {};
+  function initLayout(){
+    loadLocal();
+    elCache.contestList = document.getElementById("contestList");
+    elCache.pageContainer = document.getElementById("pageContainer");
+    elCache.modalBackdrop = document.getElementById("modalBackdrop");
+    elCache.modalTitle = document.getElementById("modalTitle");
+    elCache.noteArea = document.getElementById("noteArea");
+    elCache.closeModal = document.getElementById("closeModal");
+    elCache.deleteNote = document.getElementById("deleteNote");
+    elCache.saveNote = document.getElementById("saveNote");
+
+    setupModalEvents();
+    renderContestList();
+    renderActiveContest();
+  }
+
+  function renderContestList(){
+    elCache.contestList.innerHTML = "";
+    Object.keys(CONCURSOS).forEach(key=>{
+      const d = document.createElement("div");
+      d.className = "contest-item" + (key===state.selectedContest ? " active": "");
+      d.textContent = CONCURSOS[key];
+      d.addEventListener("click", ()=>{
+        state.selectedContest = key;
+        saveLocal();
+        renderActiveContest();
+      });
+      elCache.contestList.appendChild(d);
+    });
+  }
+
+  function renderActiveContest(){
+    const active = state.selectedContest;
+    const title = CONCURSOS[active] || active;
+    elCache.pageContainer.innerHTML = `
+      <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <div><strong>${title}</strong><div style="font-size:12px;color:#666">Clique na matéria para abrir</div></div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <div style="text-align:right">
+              <div id="percentText" style="font-weight:700">0%</div>
+              <div style="font-size:12px;color:#666">Progresso</div>
+            </div>
+            <svg class="ring-outer" viewBox="0 0 120 120" style="width:80px;height:80px">
+              <g transform="translate(60,60)">
+                <circle r="52" fill="none" stroke="#e6eef8" stroke-width="12"></circle>
+                <circle r="52" fill="none" stroke="var(--primary)" stroke-width="12" stroke-linecap="round" stroke-dasharray="326.7256" stroke-dashoffset="326.7256" transform="rotate(-90)"></circle>
+                <text id="ringNum" x="0" y="6" font-size="16" text-anchor="middle" fill="#0b2540" font-weight="700">0%</text>
+              </g>
+            </svg>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <strong>Matérias</strong>
+        <div id="subjectList" style="margin-top:12px"></div>
+      </div>
+    `;
+    renderMateriaAccordion();
+    updateProgressUI();
+  }
+
+  function renderMateriaAccordion(){
+    const container = document.getElementById("subjectList");
+    container.innerHTML = "";
+    Object.keys(MATERIAS).forEach(materia=>{
+      const pct = calculateMateriaPercent(materia);
+      const card = document.createElement("div");
+      card.className = "materia card";
+      card.innerHTML = `
+        <div class="materia-head">
+          <div>
+            <div style="font-weight:700">${materia}</div>
+            <div style="font-size:12px;color:#666">${MATERIAS[materia].length} assuntos • Progresso: <strong>${pct}%</strong></div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <div style="font-weight:700">${pct}%</div>
+            <button class="note-btn btn" data-note="${materia}">📝 Nota</button>
+          </div>
+        </div>
+        <div class="assuntos" style="display:flex;flex-direction:column;margin-top:8px">
+          ${MATERIAS[materia].map(a=>`<div style="display:flex;gap:10px;align-items:center;margin:6px 0"><div class="state-btn" data-mat="${materia}" data-sub="${a}"></div><div>${a}</div></div>`).join("")}
+        </div>
+      `;
+      // events
+      const noteBtn = card.querySelector(".note-btn");
+      noteBtn.addEventListener("click", (e)=>{ e.stopPropagation(); openNoteModal(materia); });
+
+      card.querySelectorAll(".state-btn").forEach(btn=>{
+        const assunto = btn.dataset.sub;
+        const mat = btn.dataset.mat;
+        updateStateBtn(btn, state.materias[mat][assunto]);
+        btn.addEventListener("click", e=>{
+          e.stopPropagation();
+          let v = state.materias[mat][assunto]||0;
+          v = v===0?0.5:(v===0.5?1:0);
+          state.materias[mat][assunto]=v;
+          updateStateBtn(btn,v);
+          saveLocal();
+          renderActiveContest();
+        });
+      });
+
+      container.appendChild(card);
+    });
+  }
+
+  function updateStateBtn(btn, value){
+    btn.innerHTML = value===1?"✓":(value===0.5?"●":"");
+    btn.style.background = value===1? "var(--primary)":"transparent";
+    btn.style.color = value===1? "#fff":"var(--muted)";
+  }
+
+  function updateProgressUI(){
+    const pct = calculateConcursoPercent(state.selectedContest);
+    const global = calculateGlobalPercent();
+    const pt = document.getElementById("percentText");
+    const ring = document.getElementById("ringNum");
+    const side = document.getElementById("syncStatus");
+    if(pt) pt.textContent = pct+"%";
+    if(ring) ring.textContent = pct+"%";
+    if(side) side.textContent = "Status: aguardando";
+  }
+
+  // modal events
+  function setupModalEvents(){
+    elCache.closeModal.addEventListener("click", ()=>{ elCache.modalBackdrop.style.display="none"; });
+    elCache.saveNote.addEventListener("click", ()=>{
+      const materia = elCache.modalTitle.textContent.replace("Notas: ","");
+      state.notes[materia] = elCache.noteArea.value;
+      saveLocal();
+      elCache.modalBackdrop.style.display="none";
+    });
+    elCache.deleteNote.addEventListener("click", ()=>{
+      const materia = elCache.modalTitle.textContent.replace("Notas: ","");
+      delete state.notes[materia];
+      saveLocal();
+      elCache.noteArea.value = "";
+    });
+  }
+
+  function openNoteModal(materia){
+    elCache.modalTitle.textContent = "Notas: " + materia;
+    elCache.noteArea.value = state.notes[materia] || "";
+    elCache.modalBackdrop.style.display = "flex";
+  }
+
+  /* ============================
+     APP bootstrap + events
+     ============================ */
+  document.getElementById("btnLogout").addEventListener("click", logout);
+  document.getElementById("btnExport").addEventListener("click", ()=>{
+    const blob = new Blob([JSON.stringify(exportState(),null,2)],{type:"application/json"});
+    const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="progresso_estudos.json"; a.click();
+  });
+  document.getElementById("btnImport").addEventListener("click", ()=>{
+    const input=document.createElement("input"); input.type="file"; input.accept="application/json";
+    input.onchange=()=>{ const f=input.files[0]; if(!f) return; const r=new FileReader(); r.onload=()=>{ try{ const d=JSON.parse(r.result); state=Object.assign({}, defaultState, d); saveLocal(); renderActiveContest(); alert("Importado"); }catch(e){alert("JSON invalido")} }; r.readAsText(f); };
+    input.click();
+  });
+  document.getElementById("btnPwa").addEventListener("click", async ()=>{
+    if(!("caches" in window)){ alert("Cache API não suportado"); return; }
+    const keys = await caches.keys(); for(const k of keys) await caches.delete(k); alert("Cache limpo");
+  });
+  document.getElementById("btnSync").addEventListener("click", async ()=>{
+    await syncNow();
+    renderActiveContest();
+  });
+
+  // boot
+  (function boot(){
+    const t = loadSavedToken();
+    if(!t){ document.getElementById("syncStatus").textContent = "Status: não autenticado"; return; }
+    initLayout();
+    syncNow();
+  })();
+
+  /* Expose helper for console if needed */
+  window.requestAccessToken = requestAccessToken;
+  window.saveTokenAfterLogin = saveTokenAfterLogin;
+  window.syncNow = syncNow;
+  window.exportState = exportState;
+
+  </script>
 </body>
 </html>
