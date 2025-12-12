@@ -5,29 +5,31 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
 <title>Login — Plano de Estudos</title>
 
+<!-- GIS -->
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 
 <style>
 body{
     margin:0;
-    font-family:Inter,system-ui;
     background:#eef2f7;
-    display:flex;
-    align-items:center;
-    justify-content:center;
     height:100vh;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    font-family:Inter,system-ui;
     color:#0b2540;
 }
 .card{
+    width:350px;
+    padding:26px;
     background:white;
-    width:360px;
-    padding:28px;
     border-radius:12px;
-    box-shadow:0 6px 20px rgba(0,0,0,0.08);
     text-align:center;
+    box-shadow:0 6px 20px rgba(0,0,0,0.10);
 }
 h1{
     font-size:22px;
+    font-weight:700;
     margin-bottom:10px;
 }
 p{
@@ -39,44 +41,58 @@ p{
 }
 </style>
 </head>
+
 <body>
 
 <div class="card">
     <h1>Plano de Estudos</h1>
-    <p>Entre com sua conta Google para sincronizar seu progresso com o Drive (AppData).</p>
+    <p>Entre com sua conta Google para sincronizar seu progresso.</p>
 
     <div id="buttonDiv"></div>
 
     <p style="font-size:11px;margin-top:16px;color:#777">
-        Se o popup não abrir, permita popups e cookies de terceiros.
+        Permita popups e cookies se o login não abrir.
     </p>
 </div>
 
+
 <script type="module">
-import { loginWithGoogle } from "./auth.js";
+import { saveTokenAfterLogin } from "./auth.js";
 
 window.onload = () => {
 
+    // 1) ---------------- GIS INITIALIZE ----------------
+    google.accounts.id.initialize({
+        client_id: "553818652026-vjsmkokm1pibph3ehai36q3pmbp8js88.apps.googleusercontent.com",
+        callback: handleCredential
+    });
+
+    // 2) ---------------- RENDER BUTTON ----------------
     google.accounts.id.renderButton(
         document.getElementById("buttonDiv"),
         {
             theme: "filled_blue",
             size: "large",
             shape: "pill",
-            text: "signin_with"
+            width: 260
         }
     );
-
-    document.getElementById("buttonDiv").onclick = async () => {
-        try {
-            await loginWithGoogle();
-            window.location.href = "./index.html";
-        } catch (e) {
-            console.error(e);
-            alert("Erro ao autenticar. Veja o console.");
-        }
-    };
 };
+
+// 3) ---------------- CALLBACK DO GOOGLE ----------------
+async function handleCredential(response) {
+    try {
+        await saveTokenAfterLogin(response.credential);
+
+        // Redireciona após armazenar o token
+        window.location.href = "./index.html";
+
+    } catch (e) {
+        console.error("Erro ao salvar token", e);
+        alert("Erro ao autenticar. Veja o console.");
+    }
+}
+
 </script>
 
 </body>
