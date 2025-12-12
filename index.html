@@ -269,37 +269,60 @@ async function loadFromDriveOrCreate(){
   }
 }
 
-async function saveToDriveNow(){
-  setSyncStatus('salvando no Drive...');
-  try {
-    const file = await findAppDataFile(DRIVE_FILE_NAME).catch(()=>null);
-    if(!file){
-      await createAppDataFile(DRIVE_FILE_NAME, state);
-    } else {
-      await updateAppDataFile(file.id, state);
+async function saveToDriveNow() {
+    try {
+        const file = await findAppDataFile(DRIVE_FILE_NAME).catch(()=>null);
+
+        if (!file) {
+            // Não existe nenhum arquivo no Drive → cria o primeiro
+            await createAppDataFile(DRIVE_FILE_NAME, state);
+            setSyncStatus('criado no Drive');
+            return;
+        }
+
+        // Existe → baixar para comparar
+        const remote = await downloadAppDataFile(file.id).catch(()=>null);
+
+        if (!remote) {
+            // Não conseguiu baixar → não sobrescrever à toa
+            setSyncStatus('Drive indisponível (mantido local)');
+            return;
+        }
+
+        // COMPARAÇÃO REAL
+        if ((state.updatedAt || 0) > (remote.updatedAt || 0)) {
+            // Local é mais recente → subir
+            await updateAppDataFile(file.id, state);
+            setSyncStatus('enviado ao Drive');
+        } else {
+            // Remoto é mais novo → não sobrescrever → BAIXAR
+            state = Object.assign(defaultState(), remote);
+            saveLocal(state);
+            renderActiveContest();
+            setSyncStatus('atualizado do Drive (remoto estava mais novo)');
+        }
     }
-    setSyncStatus('sincronizado (atualizado)');
-  } catch(e){
-    console.error('saveToDriveNow error', e);
-    setSyncStatus('erro ao salvar');
-  }
+    catch (e) {
+        console.error('saveToDriveNow error', e);
+        setSyncStatus('erro ao sincronizar');
+    }
 }
 
 /* debounce save */
 let _saveTimer = null;
-function scheduleSave(){
-  saveLocal(state);
-  if(_saveTimer) clearTimeout(_saveTimer);
-  _saveTimer = setTimeout(async ()=>{
-    try{
-      setSyncStatus('salvando (automático)...');
-      await saveToDriveNow();
-    }catch(e){
-      console.warn('auto save failed', e);
-      setSyncStatus('salvo local (offline)');
-    }
-  }, 900);
+function scheduleSave() {
+    saveLocal(state);
+
+    if (_saveTimer) clearTimeout(_saveTimer);
+
+    _saveTimer = setTimeout(async () => {
+        setSyncStatus('verificando versão no Drive...');
+
+        await saveToDriveNow(); // agora é seguro
+
+    }, 800);
 }
+
 
 /* sync status UI */
 function setSyncStatus(txt){
@@ -529,3 +552,4 @@ window.saveNow = async ()=> { await saveToDriveNow(); };
 
 </body>
 </html>
+
