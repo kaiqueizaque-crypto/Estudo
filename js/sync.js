@@ -1,10 +1,6 @@
 /* ============================================================
    /js/sync.js
    Sincronização com Google Drive (AppDataFolder)
-   Depende de:
-     - auth.js → loadSavedToken, findAppDataFile, createAppDataFile,
-                 updateAppDataFile, downloadAppDataFile
-     - state.js → state, saveLocal, defaultState
 ============================================================ */
 
 import {
@@ -21,10 +17,9 @@ import {
   defaultState
 } from "./state.js";
 
-/* Nome do arquivo remoto */
-const DRIVE_FILENAME = "progresso_estudos.json";
-
-/* Elemento de status */
+/* --------------------------- */
+/* Elemento de status visual   */
+/* --------------------------- */
 function setSyncStatus(txt) {
   const el = document.getElementById("syncStatus");
   if (el) el.textContent = "Status: " + txt;
@@ -79,12 +74,13 @@ function mergeStates(local, remote) {
 }
 
 /* ============================================================
-   ↓↓↓ Função principal de sincronização ↓↓↓
+   SINCRONIZAÇÃO PRINCIPAL
 ============================================================ */
+
 export async function syncNow() {
   setSyncStatus("sincronizando...");
 
-  // 1. Verificar token
+  // 1. Garantir usuário autenticado
   const token = loadSavedToken();
   if (!token) {
     setSyncStatus("não autenticado");
@@ -92,56 +88,49 @@ export async function syncNow() {
   }
 
   try {
-    // 2. Procurar arquivo remoto
-    const file = await findAppDataFile(DRIVE_FILENAME);
+    // 2. Procurar arquivo no Drive
+    const file = await findAppDataFile();
 
-    await createAppDataFile(data);
-
-    // 3. Baixar remoto
-    const remote = await downloadAppDataFile(file.id);
-
-    if (!remote) {
-      setSyncStatus("erro ao baixar");
+    if (!file) {
+      // 2A. Arquivo não existe → criar novo
+      await createAppDataFile(state.export());
+      setSyncStatus("criado no Drive");
       return;
     }
 
-    // 4. Merge
-    const merged = mergeStates(state, remote);
+    let remote = null;
 
-    // Decidir se precisa subir ou baixar
-    if (merged.updatedAt === (remote.updatedAt || 0)) {
-      // remoto mais novo → salvar local
-      saveLocal(merged);
-      setSyncStatus("sincronizado (baixado)");
-    } else {
-      // local mais novo → subir
-      saveLocal(merged);
-      await updateAppDataFile(file.id, merged);
-      setSyncStatus("sincronizado (enviado)");
+    try {
+      // 3. Tentar baixar arquivo remoto
+      remote = await downloadAppDataFile(file.id);
+    } catch (err) {
+      console.warn("Falha ao baixar arquivo remoto. Criando arquivo novo.", err);
+
+      await createAppDataFile(state.export());
+      setSyncStatus("criado novo arquivo");
+      return;
     }
 
-  } catch (e) {
-    console.error("Erro na sincronização:", e);
+    // 4. Fazer merge local + remoto
+    const merged = mergeStates(state.export(), remote);
+
+    // 5. Salvar localmente
+    saveLocal(merged);
+
+    // 6. Tentar atualizar arquivo remoto
+    try {
+      await updateAppDataFile(file.id, merged);
+      setSyncStatus("sincronizado");
+    } catch (err) {
+      console.warn("Falha ao atualizar (403). Criando novo arquivo remoto.", err);
+
+      // PERMISSÃO NEGADA → RECRIAR ARQUIVO (CORREÇÃO DO 403)
+      await createAppDataFile(merged);
+      setSyncStatus("arquivo recriado");
+    }
+
+  } catch (err) {
+    console.error("Erro na sincronização:", err);
     setSyncStatus("erro");
   }
 }
-
-/* ============================================================
-   Debounced auto-save → agenda upload automático ao Drive
-============================================================ */
-let _saveTimer = null;
-
-export function scheduleSave() {
-  saveLocal(); // sempre salva local
-
-  clearTimeout(_saveTimer);
-  _saveTimer = setTimeout(() => {
-    const token = loadSavedToken();
-    if (!token) {
-      setSyncStatus("offline (local)");
-      return;
-    }
-    syncNow();
-  }, 900);
-}
-
