@@ -13,8 +13,6 @@ import {
   saveLocal
 } from "./state.js";
 
-
-
 /* ------------------------------------------------------------
    Elementos em cache
 ------------------------------------------------------------ */
@@ -147,7 +145,6 @@ export function renderActiveContest() {
     </div>
   `;
 
-  // Re-cache elements created dynamically
   el.percentText = document.getElementById("percentText");
   el.sidePercent = document.getElementById("sidePercent");
   el.globalPercent = document.getElementById("globalPercent");
@@ -174,8 +171,6 @@ function highlightActiveContest() {
 function renderMateriaAccordion() {
   const container = document.getElementById("subjectList");
   container.innerHTML = "";
-
-  CONCURSOS[activeContest]; // future expansion
 
   Object.keys(MATERIAS).forEach(materia => {
     const pct = calculateMateriaPercent(materia);
@@ -209,7 +204,6 @@ function renderMateriaAccordion() {
       </div>
     `;
 
-    // Eventos
     const head = card.querySelector(".materia-head");
     const assuntosEl = card.querySelector(".assuntos");
 
@@ -223,7 +217,6 @@ function renderMateriaAccordion() {
       openNoteModal(materia);
     });
 
-    // Botões dos assuntos
     card.querySelectorAll(".state-btn").forEach(btn => {
       const assunto = btn.dataset.sub;
 
@@ -238,9 +231,8 @@ function renderMateriaAccordion() {
         state.materias[materia][assunto] = val;
 
         updateStateBtn(btn, val);
-        saveLocal();
-        scheduleSave();
-        renderActiveContest();
+        saveLocal();           // salvamento local
+        renderActiveContest(); // atualizar UI
       });
     });
 
@@ -248,7 +240,6 @@ function renderMateriaAccordion() {
   });
 }
 
-/* Botão estado */
 function updateStateBtn(btn, value) {
   btn.innerHTML =
     value === 1 ? "✓" :
@@ -293,7 +284,6 @@ function setupModalEvents() {
     if (currentMateria) {
       state.notes[currentMateria] = el.noteArea.value;
       saveLocal();
-      scheduleSave();
     }
     el.modalBackdrop.style.display = "none";
   });
@@ -302,7 +292,6 @@ function setupModalEvents() {
     if (currentMateria) {
       delete state.notes[currentMateria];
       saveLocal();
-      scheduleSave();
     }
     el.noteArea.value = "";
   });
@@ -314,4 +303,3 @@ export function openNoteModal(materia) {
   el.noteArea.value = state.notes[materia] || "";
   el.modalBackdrop.style.display = "flex";
 }
-
