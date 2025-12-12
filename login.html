@@ -57,17 +57,15 @@ p{
 
 
 <script type="module">
-import { saveTokenAfterLogin } from "./auth.js";
+import { saveTokenAfterLogin } from "./js/auth.js";
 
 window.onload = () => {
 
-    // 1) ---------------- GIS INITIALIZE ----------------
     google.accounts.id.initialize({
         client_id: "553818652026-vjsmkokm1pibph3ehai36q3pmbp8js88.apps.googleusercontent.com",
         callback: handleCredential
     });
 
-    // 2) ---------------- RENDER BUTTON ----------------
     google.accounts.id.renderButton(
         document.getElementById("buttonDiv"),
         {
@@ -79,12 +77,10 @@ window.onload = () => {
     );
 };
 
-// 3) ---------------- CALLBACK DO GOOGLE ----------------
 async function handleCredential(response) {
     try {
         await saveTokenAfterLogin(response.credential);
 
-        // Redireciona após armazenar o token
         window.location.href = "./index.html";
 
     } catch (e) {
@@ -92,8 +88,9 @@ async function handleCredential(response) {
         alert("Erro ao autenticar. Veja o console.");
     }
 }
-
 </script>
+
 
 </body>
 </html>
+
