@@ -2,26 +2,31 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
 <title>Plano de Estudos — v2.0</title>
 
+<link rel="manifest" href="./manifest.json" />
+<link rel="icon" href="./logo2.ico" />
 <link rel="stylesheet" href="./css/style.css">
-<script type="module" src="./js/app.js"></script>
+
+<meta name="theme-color" content="#0b5ea8" />
 </head>
 
 <body>
 
-<!-- App Wrapper -->
-<div class="app" id="app" style="display:none">
+<div id="app" class="app" style="display:none">
 
     <!-- SIDEBAR -->
     <aside class="sidebar card">
-        <img id="logo" src="./logo.png" alt="Logo" />
+        <img id="logo" src="./logo.png" />
+
         <h1>Plano de Estudos</h1>
         <div class="meta">PC-BA & PRF-ADM</div>
 
-        <div class="contest-list" id="contestList"></div>
+        <!-- LISTA DE CONCURSOS -->
+        <div id="contestList" class="contest-list"></div>
 
+        <!-- BOTÕES -->
         <div class="controls">
             <button id="exportBtn" class="small btn-ghost">Exportar JSON</button>
             <button id="importBtn" class="small btn-ghost">Importar JSON</button>
@@ -30,23 +35,24 @@
 
         <div id="authArea"></div>
 
-        <div class="status-line" id="syncStatus">Status: carregando...</div>
+        <div id="syncStatus" class="status-line">Status: carregando...</div>
 
-        <button id="clearCaches" class="small btn-ghost clear-cache">Limpar cache PWA</button>
+        <button id="clearPwa" class="btn-ghost small">Limpar cache PWA</button>
     </aside>
 
-    <!-- MAIN -->
+    <!-- ÁREA PRINCIPAL -->
     <main class="main">
-        <div id="mainContent"></div>
+        <div id="pageContainer"></div>
     </main>
 
 </div>
 
-<!-- MODAL -->
-<div class="modal-backdrop" id="modalBackdrop">
+<!-- MODAL DE NOTAS -->
+<div id="modalBackdrop" class="modal-backdrop">
     <div class="modal">
         <h3 id="modalTitle">Notas</h3>
         <textarea id="noteArea"></textarea>
+
         <div class="footer-row">
             <button id="closeModal" class="btn-ghost small">Fechar</button>
             <button id="deleteNote" class="btn-ghost small">Apagar</button>
@@ -55,37 +61,47 @@
     </div>
 </div>
 
-<!-- MODULES -->
+<!-- ===============================
+     SCRIPTS MODULARES (ORDEM CORRETA)
+     =============================== -->
+
 <script type="module">
-import { loadSavedToken, logout } from "./auth.js";
-import * as State from "./js/state.js";
-import * as UI from "./js/ui.js";
-import * as Sync from "./js/sync.js";
-import { setupAppEvents } from "./js/app.js";
+    import { loadSavedToken, logout } from "./js/auth.js";
+    import { initSyncSystem } from "./js/sync.js";
+    import { initUI } from "./js/ui.js";
+    import { initApp } from "./js/app.js";
 
-/* ============================
-   LOGIN CHECK
-============================ */
-const token = loadSavedToken();
-if (!token) {
-    window.location.href = "./login.html";
-}
+    /* 1. VERIFICA LOGIN */
+    const token = loadSavedToken();
+    if (!token) {
+        window.location.href = "./login.html";
+    }
 
-/* ============================
-   APP BOOT
-============================ */
-window.onload = () => {
+    /* 2. MOSTRA APP */
     document.getElementById("app").style.display = "grid";
 
-    UI.initLayout();
-    State.initState();
-    setupAppEvents();
-    
-    // Executa 1 sync ao iniciar
-    Sync.initialSync();
-};
+    /* 3. INICIALIZA MÓDULOS */
+    initUI();
+    initSyncSystem();
+    initApp();
+
+    /* 4. BOTÃO SAIR */
+    document.getElementById("authArea").innerHTML = `
+        <button id="logoutBtn" class="small btn-ghost">Sair</button>`;
+    document.getElementById("logoutBtn").onclick = logout;
+
+    /* 5. LIMPAR CACHE PWA */
+    document.getElementById("clearPwa").onclick = async () => {
+        if ('serviceWorker' in navigator) {
+            const regs = await navigator.serviceWorker.getRegistrations();
+            for (const r of regs) r.unregister();
+        }
+        localStorage.clear();
+        caches.keys().then(keys => keys.forEach(k => caches.delete(k)));
+        alert("Cache limpo. Recarregue o app.");
+        location.reload();
+    };
 </script>
 
 </body>
 </html>
-
