@@ -9,7 +9,7 @@ import {
   createAppDataFile,
   updateAppDataFile,
   downloadAppDataFile
-} from "../auth.js";
+} from "./auth.js";
 
 import {
   state,
@@ -134,3 +134,4 @@ export async function syncNow() {
     setSyncStatus("erro");
   }
 }
+
