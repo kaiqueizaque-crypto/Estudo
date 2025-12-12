@@ -3,9 +3,10 @@
    Integra: state.js, ui.js, sync.js, auth.js
 ============================================================ */
 
-import * as State from "./state.js";
-import * as UI from "./ui.js";
-import * as Sync from "./sync.js";
+import { state, loadState, saveState } from "./state.js";
+import { mergeStates } from "./util.js";
+import { renderUI } from "./ui.js";
+import { syncDrive } from "./sync.js";
 import { loadSavedToken, logout } from "../auth.js";
 
 /* ---------- Helpers ---------- */
@@ -165,4 +166,5 @@ window.__STUDY_APP = {
   getState: () => State.state,
   saveNow: () => Sync.saveToDriveNow(),
   initialSync: () => Sync.initialSync()
+
 };
