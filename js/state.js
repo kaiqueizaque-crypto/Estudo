@@ -2,26 +2,10 @@
    STATE.JS — Estado central do aplicativo
 ============================================================ */
 
-/*  
-   ESTRUTURA:
-   - CONCURSOS: lista de concursos e suas matérias
-   - MATERIAS: assuntos de cada matéria
-   - state: estrutura principal usada em toda a aplicação
-   - Funções para carregar, salvar e calcular progresso
-*/
-
-/* ============================================================
-   LISTA DE CONCURSOS
-============================================================ */
-
 export const CONCURSOS = {
   pc_ba: "Polícia Civil - PC-BA",
   prf_adm: "PRF Administrativo"
 };
-
-/* ============================================================
-   LISTA DE MATÉRIAS E ASSUNTOS
-============================================================ */
 
 export const MATERIAS = {
   "Língua Portuguesa": [
@@ -73,19 +57,17 @@ export const MATERIAS = {
   ]
 };
 
-
 /* ============================================================
-   ESTADO PRINCIPAL
+   DEFAULT STATE (necessário para sync.js)
 ============================================================ */
 
-export let state = {
+export const defaultState = {
   selectedContest: "pc_ba",
-  materias: {},   // cada matéria → { assunto: 0 | 0.5 | 1 }
-  notes: {},      // notas por matéria
+  materias: {},
+  notes: {},
   updatedAt: 0
 };
 
-/* Criar estrutura inicial */
 function createDefaultMaterias() {
   const obj = {};
   Object.keys(MATERIAS).forEach(mat => {
@@ -96,11 +78,18 @@ function createDefaultMaterias() {
 }
 
 /* ============================================================
-   CARREGAR ESTADO LOCAL
+   ESTADO ATUAL
+============================================================ */
+
+export let state = JSON.parse(JSON.stringify(defaultState));
+
+/* ============================================================
+   Carregar estado local
 ============================================================ */
 
 export function loadState() {
   const raw = localStorage.getItem("progresso_estudos_v2");
+
   if (!raw) {
     state.materias = createDefaultMaterias();
     saveLocal();
@@ -120,16 +109,18 @@ export function loadState() {
 }
 
 /* ============================================================
-   SALVAR ESTADO LOCAL
+   Salvar estado local
 ============================================================ */
 
-export function saveLocal() {
+export function saveLocal(updatedState = null) {
+  if (updatedState) state = updatedState;
   state.updatedAt = Date.now();
+
   localStorage.setItem("progresso_estudos_v2", JSON.stringify(state));
 }
 
 /* ============================================================
-   CÁLCULO DE PROGRESSO
+   Cálculos de progresso
 ============================================================ */
 
 export function calculateMateriaPercent(materia) {
@@ -139,24 +130,20 @@ export function calculateMateriaPercent(materia) {
   if (total === 0) return 0;
 
   const soma = Object.values(assuntos).reduce((a, b) => a + b, 0);
-
-  // 0 = 0%, 0.5 = 50%, 1 = 100%
   return Math.round((soma / total) * 100);
 }
 
-export function calculateConcursoPercent(contest) {
-  let somatorio = 0;
-  let qtd = 0;
+export function calculateConcursoPercent() {
+  let soma = 0, qtd = 0;
 
-  Object.keys(MATERIAS).forEach(mat => {
-    somatorio += calculateMateriaPercent(mat);
+  for (const mat of Object.keys(MATERIAS)) {
+    soma += calculateMateriaPercent(mat);
     qtd++;
-  });
+  }
 
-  return Math.round(somatorio / qtd);
+  return Math.round(soma / qtd);
 }
 
 export function calculateGlobalPercent() {
-  return calculateConcursoPercent(state.selectedContest);
+  return calculateConcursoPercent();
 }
-
