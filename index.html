@@ -2,106 +2,55 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+
 <title>Plano de Estudos — v2.0</title>
 
-<link rel="manifest" href="./manifest.json" />
-<link rel="icon" href="./logo2.ico" />
-<link rel="stylesheet" href="./css/style.css">
+<!-- CSS CORRETO -->
+<link rel="stylesheet" href="./css/style.css" />
+
+<!-- Ícone CORRETO -->
+<link rel="icon" type="image/png" href="./logo2.png" />
 
 <meta name="theme-color" content="#0b5ea8" />
 </head>
 
 <body>
 
-<div id="app" class="app" style="display:none">
+<div class="app" id="app" style="display:none">
 
-    <!-- SIDEBAR -->
-    <aside class="sidebar card">
-        <img id="logo" src="./logo.png" />
+  <aside class="sidebar card">
+      <img id="logo" src="./logo.png" alt="Logo" />
 
-        <h1>Plano de Estudos</h1>
-        <div class="meta">PC-BA & PRF-ADM</div>
+      <h1>Plano de Estudos</h1>
+      <div class="meta">PC-BA & PRF-ADM</div>
 
-        <!-- LISTA DE CONCURSOS -->
-        <div id="contestList" class="contest-list"></div>
+      <div id="contestList"></div>
 
-        <!-- BOTÕES -->
-        <div class="controls">
-            <button id="exportBtn" class="small btn-ghost">Exportar JSON</button>
-            <button id="importBtn" class="small btn-ghost">Importar JSON</button>
-            <button id="syncBtn" class="small">Sincronizar Drive</button>
-        </div>
+      <button id="exportBtn">Exportar JSON</button>
+      <button id="importBtn">Importar JSON</button>
+      <button id="syncBtn">Sincronizar Drive</button>
 
-        <div id="authArea"></div>
+      <div id="authArea"></div>
 
-        <div id="syncStatus" class="status-line">Status: carregando...</div>
+      <div class="status-line" id="syncStatus">Status: carregando...</div>
 
-        <button id="clearPwa" class="btn-ghost small">Limpar cache PWA</button>
-    </aside>
+      <button id="clearCaches" class="small btn-ghost">Limpar cache PWA</button>
+  </aside>
 
-    <!-- ÁREA PRINCIPAL -->
-    <main class="main">
-        <div id="pageContainer"></div>
-    </main>
+  <main class="main">
+    <div id="pageContainer"></div>
+  </main>
 
 </div>
 
-<!-- MODAL DE NOTAS -->
-<div id="modalBackdrop" class="modal-backdrop">
-    <div class="modal">
-        <h3 id="modalTitle">Notas</h3>
-        <textarea id="noteArea"></textarea>
-
-        <div class="footer-row">
-            <button id="closeModal" class="btn-ghost small">Fechar</button>
-            <button id="deleteNote" class="btn-ghost small">Apagar</button>
-            <button id="saveNote" class="small">Salvar</button>
-        </div>
-    </div>
-</div>
-
-<!-- ===============================
-     SCRIPTS MODULARES (ORDEM CORRETA)
-     =============================== -->
-
-<script type="module">
-    import { loadSavedToken, logout } from "./js/auth.js";
-    import { initSyncSystem } from "./js/sync.js";
-    import { initUI } from "./js/ui.js";
-    import { initApp } from "./js/app.js";
-
-    /* 1. VERIFICA LOGIN */
-    const token = loadSavedToken();
-    if (!token) {
-        window.location.href = "./login.html";
-    }
-
-    /* 2. MOSTRA APP */
-    document.getElementById("app").style.display = "grid";
-
-    /* 3. INICIALIZA MÓDULOS */
-    initUI();
-    initSyncSystem();
-    initApp();
-
-    /* 4. BOTÃO SAIR */
-    document.getElementById("authArea").innerHTML = `
-        <button id="logoutBtn" class="small btn-ghost">Sair</button>`;
-    document.getElementById("logoutBtn").onclick = logout;
-
-    /* 5. LIMPAR CACHE PWA */
-    document.getElementById("clearPwa").onclick = async () => {
-        if ('serviceWorker' in navigator) {
-            const regs = await navigator.serviceWorker.getRegistrations();
-            for (const r of regs) r.unregister();
-        }
-        localStorage.clear();
-        caches.keys().then(keys => keys.forEach(k => caches.delete(k)));
-        alert("Cache limpo. Recarregue o app.");
-        location.reload();
-    };
-</script>
+<!-- IMPORTS MODULARES CORRETOS -->
+<script type="module" src="./js/state.js"></script>
+<script type="module" src="./js/util.js"></script>
+<script type="module" src="./js/ui.js"></script>
+<script type="module" src="./js/sync.js"></script>
+<script type="module" src="./js/auth.js"></script>
+<script type="module" src="./js/app.js"></script>
 
 </body>
 </html>
