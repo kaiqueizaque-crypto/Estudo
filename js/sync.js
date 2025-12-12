@@ -7,8 +7,8 @@
 
 import {
   state,
-  saveLocal,        // CORRETO — substitui saveState
-  defaultState
+  saveLocal,
+  defaultState   // agora EXISTE
 } from "./state.js";
 
 import {
@@ -152,3 +152,4 @@ export async function fullSync() {
     document.getElementById("syncStatus").textContent = "Erro ao sincronizar";
   }
 }
+
