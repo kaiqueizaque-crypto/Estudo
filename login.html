@@ -2,62 +2,82 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
 <title>Login — Plano de Estudos</title>
 
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+
 <style>
-body {
-  margin: 0;
-  background: #eef2f7;
-  font-family: Inter, Arial;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100vh;
+body{
+    margin:0;
+    font-family:Inter,system-ui;
+    background:#eef2f7;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    height:100vh;
+    color:#0b2540;
 }
-.card {
-  background: white;
-  padding: 26px;
-  border-radius: 12px;
-  width: 360px;
-  text-align: center;
-  box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+.card{
+    background:white;
+    width:360px;
+    padding:28px;
+    border-radius:12px;
+    box-shadow:0 6px 20px rgba(0,0,0,0.08);
+    text-align:center;
 }
-.btn {
-  background: #0b5ea8;
-  color: white;
-  border: 0;
-  padding: 10px 18px;
-  font-size: 16px;
-  border-radius: 8px;
-  cursor: pointer;
-  margin-top: 20px;
+h1{
+    font-size:22px;
+    margin-bottom:10px;
+}
+p{
+    font-size:14px;
+    color:#444;
+}
+#buttonDiv{
+    margin-top:20px;
 }
 </style>
-<script src="https://accounts.google.com/gsi/client" async defer></script>
-<script src="./auth.js"></script>
-  
-<div id="googleLoginBtn"></div>
-  
-<div id="g_id_onload"
-     data-client_id="553818652026-vjsmkokm1pibph3ehai36q3pmbp8js88.apps.googleusercontent.com"
-     data-context="signin"
-     data-ux_mode="popup"
-     data-callback="handleCredentialResponse">
+</head>
+<body>
+
+<div class="card">
+    <h1>Plano de Estudos</h1>
+    <p>Entre com sua conta Google para sincronizar seu progresso com o Drive (AppData).</p>
+
+    <div id="buttonDiv"></div>
+
+    <p style="font-size:11px;margin-top:16px;color:#777">
+        Se o popup não abrir, permita popups e cookies de terceiros.
+    </p>
 </div>
 
-<div class="g_id_signin"
-     data-type="standard"
-     data-shape="rectangular"
-     data-theme="filled_blue"
-     data-text="signin_with"
-     data-size="large">
-</div>
+<script type="module">
+import { loginWithGoogle } from "./auth.js";
 
+window.onload = () => {
+
+    google.accounts.id.renderButton(
+        document.getElementById("buttonDiv"),
+        {
+            theme: "filled_blue",
+            size: "large",
+            shape: "pill",
+            text: "signin_with"
+        }
+    );
+
+    document.getElementById("buttonDiv").onclick = async () => {
+        try {
+            await loginWithGoogle();
+            window.location.href = "./index.html";
+        } catch (e) {
+            console.error(e);
+            alert("Erro ao autenticar. Veja o console.");
+        }
+    };
+};
+</script>
 
 </body>
 </html>
-
-
-
-
