@@ -1,5 +1,15 @@
 /* ============================================================
-   STATE.JS — Estado central do aplicativo
+   /js/state.js
+   Estado central do aplicativo — versão consolidada e compatível
+   Exporta:
+     - CONCURSOS, MATERIAS
+     - defaultState
+     - state (mutable)
+     - loadLocal(), saveLocal()
+     - calculateMateriaPercent(), calculateConcursoPercent(), calculateGlobalPercent()
+   Observações:
+     - Chave localStorage: "progresso_estudos_v2"
+     - saveLocal() atualiza state.updatedAt automaticamente
 ============================================================ */
 
 export const CONCURSOS = {
@@ -12,138 +22,180 @@ export const MATERIAS = {
     "Interpretação de texto",
     "Ortografia",
     "Morfologia",
-    "Sintaxe"
+    "Sintaxe",
+    "Pontuação",
+    "Concordância"
   ],
   "Raciocínio Lógico": [
     "Proposições",
     "Tabelas verdade",
     "Probabilidade",
-    "Análise combinatória"
+    "Análise combinatória",
+    "Raciocínios básicos"
   ],
   "Direito Penal": [
     "Parte Geral",
     "Crimes em espécie",
-    "Teoria do Crime"
+    "Teoria do Crime",
+    "Penas"
   ],
   "Direito Processual Penal": [
     "Inquérito policial",
     "Ação penal",
-    "Provas"
+    "Provas",
+    "Medidas cautelares"
   ],
   "Direitos Humanos": [
     "Constituição",
     "Tratados internacionais",
-    "Sistemas protetivos"
+    "Sistema interamericano"
   ],
   "Informática": [
     "Windows",
     "Pacote Office",
     "Navegadores",
-    "Segurança"
+    "Segurança da informação"
   ],
   "Administração": [
     "Administração geral",
-    "Processos",
-    "Qualidade"
+    "Gestão de pessoas",
+    "Noções de planejamento"
   ],
   "Ética": [
     "Código de ética",
-    "Serviço público"
+    "Deveres do servidor"
   ],
   "Legislação de Trânsito": [
     "CTB",
     "Infrações",
-    "Direção defensiva"
+    "Sinalização"
   ]
 };
 
-/* ============================================================
-   DEFAULT STATE (necessário para sync.js)
-============================================================ */
-
+/* Estado padrão (exportado para uso em sync.js) */
 export const defaultState = {
   selectedContest: "pc_ba",
-  materias: {},
-  notes: {},
+  materias: {},   // preenchido por createDefaultMaterias()
+  notes: {},      // notas por matéria
   updatedAt: 0
 };
 
-function createDefaultMaterias() {
-  const obj = {};
-  Object.keys(MATERIAS).forEach(mat => {
-    obj[mat] = {};
-    MATERIAS[mat].forEach(a => obj[mat][a] = 0);
-  });
-  return obj;
-}
+/* Chave de armazenamento local */
+const STORAGE_KEY = "progresso_estudos_v2";
 
-/* ============================================================
-   ESTADO ATUAL
-============================================================ */
-
+/* Estado em memória (mutável) */
 export let state = JSON.parse(JSON.stringify(defaultState));
 
-/* ============================================================
-   Carregar estado local
-============================================================ */
+/* -----------------------------------------------------------
+   Helpers internos
+----------------------------------------------------------- */
+function createDefaultMateriasStructure() {
+  const out = {};
+  Object.keys(MATERIAS).forEach(mat => {
+    out[mat] = {};
+    MATERIAS[mat].forEach(assunto => (out[mat][assunto] = 0));
+  });
+  return out;
+}
 
-export function loadState() {
-  const raw = localStorage.getItem("progresso_estudos_v2");
+/* -----------------------------------------------------------
+   Carregar do localStorage
+   - Se não existir, inicializa com default + materias
+----------------------------------------------------------- */
+export function loadLocal() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) {
+      // inicializa
+      state = JSON.parse(JSON.stringify(defaultState));
+      state.materias = createDefaultMateriasStructure();
+      state.notes = {};
+      saveLocal();
+      return state;
+    }
+    const parsed = JSON.parse(raw);
 
-  if (!raw) {
-    state.materias = createDefaultMaterias();
+    // normaliza estrutura
+    state = {
+      ...JSON.parse(JSON.stringify(defaultState)),
+      ...parsed,
+      materias: parsed.materias || createDefaultMateriasStructure(),
+      notes: parsed.notes || {}
+    };
+
+    return state;
+  } catch (e) {
+    console.error("loadLocal error:", e);
+    // fallback para default
+    state = JSON.parse(JSON.stringify(defaultState));
+    state.materias = createDefaultMateriasStructure();
+    state.notes = {};
     saveLocal();
     return state;
   }
-
-  const parsed = JSON.parse(raw);
-
-  state = {
-    ...state,
-    ...parsed,
-    materias: parsed.materias || createDefaultMaterias(),
-    notes: parsed.notes || {},
-  };
-
-  return state;
 }
 
-/* ============================================================
-   Salvar estado local
-============================================================ */
-
-export function saveLocal(updatedState = null) {
-  if (updatedState) state = updatedState;
+/* -----------------------------------------------------------
+   Salvar no localStorage (atualiza updatedAt)
+   - Se passado um objeto, sobrescreve state
+----------------------------------------------------------- */
+export function saveLocal(newState = null) {
+  if (newState) state = newState;
   state.updatedAt = Date.now();
-
-  localStorage.setItem("progresso_estudos_v2", JSON.stringify(state));
-}
-
-/* ============================================================
-   Cálculos de progresso
-============================================================ */
-
-export function calculateMateriaPercent(materia) {
-  const assuntos = state.materias[materia];
-  const total = Object.keys(assuntos).length;
-
-  if (total === 0) return 0;
-
-  const soma = Object.values(assuntos).reduce((a, b) => a + b, 0);
-  return Math.round((soma / total) * 100);
-}
-
-export function calculateConcursoPercent() {
-  let soma = 0, qtd = 0;
-
-  for (const mat of Object.keys(MATERIAS)) {
-    soma += calculateMateriaPercent(mat);
-    qtd++;
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  } catch (e) {
+    console.error("saveLocal error:", e);
   }
+}
 
-  return Math.round(soma / qtd);
+/* -----------------------------------------------------------
+   Cálculos de progresso
+   - Cada assunto guarda 0 | 0.5 | 1 (conforme UI)
+   - calculateMateriaPercent -> retorna inteiro 0..100
+----------------------------------------------------------- */
+export function calculateMateriaPercent(materia) {
+  if (!state.materias || !state.materias[materia]) return 0;
+  const assuntos = state.materias[materia];
+  const keys = Object.keys(assuntos);
+  if (keys.length === 0) return 0;
+  let sum = 0;
+  keys.forEach(k => {
+    const v = Number(assuntos[k]) || 0;
+    sum += v;
+  });
+  // valores 0, 0.5, 1. Convertendo média para porcentagem:
+  const avg = sum / keys.length; // entre 0 e 1
+  return Math.round(avg * 100);
+}
+
+export function calculateConcursoPercent(contestKey = "pc_ba") {
+  // contestKey currently not used to choose materias set,
+  // we compute global average across MATERIAS defined.
+  const mats = Object.keys(MATERIAS);
+  if (mats.length === 0) return 0;
+  let sum = 0;
+  mats.forEach(mat => {
+    sum += calculateMateriaPercent(mat);
+  });
+  return Math.round(sum / mats.length);
 }
 
 export function calculateGlobalPercent() {
-  return calculateConcursoPercent();
+  return calculateConcursoPercent(state.selectedContest);
+}
+
+/* -----------------------------------------------------------
+   Inicializa estado (conveniência para boot)
+   - loadLocal() e retorna state
+----------------------------------------------------------- */
+export function initState() {
+  return loadLocal();
+}
+
+/* -----------------------------------------------------------
+   Export summary helpers (opcionais)
+----------------------------------------------------------- */
+export function exportStateJSON() {
+  return JSON.parse(JSON.stringify(state));
 }
