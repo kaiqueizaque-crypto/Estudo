@@ -1,51 +1,90 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Plano de Estudos</title>
 
   <link rel="stylesheet" href="./css/style.css">
-  <link rel="manifest" href="./manifest.json">
 
-  <!-- Icone -->
-  <link rel="icon" href="./logo.png" type="image/png">
-
-  <!-- Google Identity (necessário para logout seguro) -->
-  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <!-- Manifest + PWA -->
+  <link rel="manifest" href="./manifest.json" />
 </head>
 
 <body>
 
-  <div id="app">
-    <header class="app-header">
-      <img src="./logo2.png" class="app-logo" alt="Logo">
-      <h1>Plano de Estudos</h1>
-      <p id="syncStatus">Status: aguardando</p>
+  <!-- ============================================================
+       MODAL DE NOTAS (necessário para o ui.js)
+  ============================================================ -->
+  <div id="modalBackdrop" class="modal-backdrop" style="display:none;">
+    <div class="modal">
+      <div class="modal-header">
+        <span id="modalTitle">Notas</span>
+        <button id="closeModal" class="modal-close">X</button>
+      </div>
 
-      <button id="btnLogout" class="btn-danger">Sair da conta</button>
-    </header>
+      <textarea id="noteArea" class="modal-textarea"></textarea>
 
-    <main class="app-main">
-      <!-- Área de matérias (renderizada pelo ui.js) -->
-      <div id="materiasContainer"></div>
-    </main>
-
-    <footer class="app-footer">
-      <button id="btnExport" class="btn">Exportar JSON</button>
-      <button id="btnImport" class="btn">Importar JSON</button>
-      <button id="btnSync"   class="btn-primary">Sincronizar Drive</button>
-      <button id="btnPwa"    class="btn">Limpar cache PWA</button>
-    </footer>
+      <div class="modal-actions">
+        <button id="deleteNote" class="btn danger">Excluir</button>
+        <button id="saveNote" class="btn primary">Salvar</button>
+      </div>
+    </div>
   </div>
 
-  <!-- Scripts principais (corrigidos para usar pasta js/) -->
-  <script type="module">
-    import "./js/auth.js";
-    import "./js/state.js";
-    import "./js/ui.js";
-    import "./js/sync.js";
-    import "./js/app.js";
+  <!-- ============================================================
+       CABEÇALHO
+  ============================================================ -->
+  <header class="header-main">
+    <img src="./logo2.png" class="logo">
+
+    <div class="header-info">
+      <h1>Plano de Estudos</h1>
+      <div id="syncStatus">Status: aguardando</div>
+    </div>
+
+    <div class="header-actions">
+      <button id="btnLogout" class="btn danger">Sair da conta</button>
+    </div>
+  </header>
+
+
+  <!-- ============================================================
+       CONTEÚDO PRINCIPAL
+  ============================================================ -->
+  <main class="main-container">
+
+    <!-- Sidebar com concursos -->
+    <aside class="sidebar">
+      <div id="contestList"></div>
+
+      <button id="btnSync" class="btn primary" style="margin-top:20px;">
+        Sincronizar Drive
+      </button>
+
+      <button id="btnClearCache" class="btn secondary" style="margin-top:10px;">
+        Limpar cache PWA
+      </button>
+    </aside>
+
+    <!-- Conteúdo -->
+    <section id="pageContainer" class="page-container">
+      <!-- Renderizado dinamicamente pelo ui.js -->
+    </section>
+  </main>
+
+
+  <!-- ============================================================
+       SCRIPTS DO APLICATIVO
+  ============================================================ -->
+
+  <script type="module" src="./js/app.js"></script>
+
+  <!-- Service Worker -->
+  <script>
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("./service-worker.js");
+    }
   </script>
 
 </body>
