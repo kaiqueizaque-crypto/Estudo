@@ -59,10 +59,9 @@
     </p>
   </div>
 
-
   <!-- Login Logic -->
   <script type="module">
-    import { saveTokenAfterLogin } from "./auth.js";
+    import { saveTokenAfterLogin, requestAccessToken } from "./auth.js";
 
     window.onload = () => {
       google.accounts.id.initialize({
@@ -81,15 +80,24 @@
       );
     };
 
+    // Fluxo completo e correto:
+    // 1. Recebe credential (id_token)
+    // 2. Salva no localStorage
+    // 3. Solicita access_token OAuth2 para o Drive
+    // 4. Redireciona para o app
     async function handleGoogleCredential(response) {
       try {
+        // Salva id_token do GIS (como antes)
+        await saveTokenAfterLogin(response.credential);
+
+        // Solicita access_token OAuth2 (Drive)
         await requestAccessToken();
 
-        // Redirecionar para o app
+        // Redireciona para o app
         window.location.href = "./index.html";
 
       } catch (error) {
-        console.error("Erro ao salvar token", error);
+        console.error("Erro ao autenticar:", error);
         alert("Erro ao autenticar. Veja o console.");
       }
     }
@@ -97,4 +105,3 @@
 
 </body>
 </html>
-
