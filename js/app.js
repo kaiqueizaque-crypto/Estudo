@@ -1,170 +1,123 @@
 /* ============================================================
-   app.js — controlador principal (eventos e boot)
-   Integra: state.js, ui.js, sync.js, auth.js
+   /js/app.js
+   Boot principal do aplicativo
 ============================================================ */
 
-import { state, loadState, saveState } from "./state.js";
-import { mergeStates } from "./util.js";
-import { renderUI } from "./ui.js";
-import { syncDrive } from "./sync.js";
 import { loadSavedToken, logout } from "../auth.js";
+import { initState, saveLocal, state } from "./state.js";
+import { initLayout, renderActiveContest } from "./ui.js";
+import { syncNow } from "./sync.js";
+import { loadFileAsText } from "./util.js";
 
-/* ---------- Helpers ---------- */
+/* ============================================================
+   FUNÇÃO DE INICIALIZAÇÃO
+============================================================ */
+async function boot() {
 
-function el(id) { return document.getElementById(id); }
-
-function downloadObjectAsJson(obj, filename) {
-  const blob = new Blob([JSON.stringify(obj, null, 2)], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
-}
-
-/* ---------- Export / Import Handlers ---------- */
-
-function handleExport() {
-  downloadObjectAsJson(State.state, "progresso_estudos.json");
-}
-
-function handleImport() {
-  const input = document.createElement("input");
-  input.type = "file";
-  input.accept = "application/json";
-  input.addEventListener("change", async (e) => {
-    const f = e.target.files[0];
-    if (!f) return;
-    try {
-      const txt = await f.text();
-      const parsed = JSON.parse(txt);
-      // merge lightly: prefer imported content but keep missing fields
-      const base = State.defaultState();
-      const merged = Object.assign(base, parsed);
-      // Overwrite State.state and persist
-      State.state = merged;
-      State.saveLocal();
-      UI.renderActiveContest();
-      // schedule remote sync (merge)
-      Sync.scheduleSave();
-      alert("Import concluído");
-    } catch (err) {
-      console.error("Import error:", err);
-      alert("Arquivo inválido");
-    }
-  });
-  input.click();
-}
-
-/* ---------- Clear caches / service worker ---------- */
-
-async function handleClearCaches() {
-  try {
-    if (navigator.serviceWorker) {
-      const regs = await navigator.serviceWorker.getRegistrations();
-      for (const r of regs) await r.unregister();
-    }
-    if (window.caches) {
-      const keys = await caches.keys();
-      for (const k of keys) await caches.delete(k);
-    }
-    alert("Service worker e caches removidos. Recarregue a página (Ctrl+F5).");
-  } catch (e) {
-    console.warn("clear caches fail", e);
-    alert("Falha ao limpar caches. Veja console.");
-  }
-}
-
-/* ---------- Forçar download do Drive (utilitário de debug) ---------- */
-
-async function handleForceDownloadFromDrive() {
-  try {
-    document.getElementById("syncStatus").textContent = "Forçando download do Drive...";
-    await Sync.initialSync(); // initialSync executa merge e salva local
-    UI.renderActiveContest();
-    document.getElementById("syncStatus").textContent = "Download forçado concluído";
-  } catch (e) {
-    console.error("force download failed", e);
-    document.getElementById("syncStatus").textContent = "Erro ao forçar download";
-  }
-}
-
-/* ---------- Montar área de autenticação (logout) ---------- */
-
-function renderAuthArea() {
-  const authArea = el("authArea");
-  if (!authArea) return;
-  authArea.innerHTML = "";
-  const btn = document.createElement("button");
-  btn.className = "small btn-ghost";
-  btn.textContent = "Sair";
-  btn.addEventListener("click", () => {
-    logout();
-  });
-  authArea.appendChild(btn);
-}
-
-/* ---------- Setup dos eventos do app (exportado) ---------- */
-
-export function setupAppEvents() {
-  // Garantir que o state esteja inicializado
-  if (!State.state) State.initState();
-
-  // Inicializar UI
-  UI.initLayout();
-
-  // Atachar botões (existem no DOM)
-  const exportBtn = el("exportBtn");
-  const importBtn = el("importBtn");
-  const syncBtn = el("syncBtn");
-  const clearCachesBtn = el("clearCaches");
-
-  if (exportBtn) exportBtn.addEventListener("click", handleExport);
-  if (importBtn) importBtn.addEventListener("click", handleImport);
-  if (syncBtn) syncBtn.addEventListener("click", () => {
-    document.getElementById("syncStatus").textContent = "Sincronizando (manual)...";
-    Sync.saveToDriveNow();
-  });
-  if (clearCachesBtn) clearCachesBtn.addEventListener("click", handleClearCaches);
-
-  // adicionar item opcional: forçar download remoto ao clicar com Shift+Click no botão Sync
-  if (syncBtn) {
-    syncBtn.addEventListener("click", (ev) => {
-      if (ev.shiftKey) handleForceDownloadFromDrive();
-    });
-  }
-
-  // Render auth area (logout)
-  renderAuthArea();
-
-  // Se o usuário não estiver autenticado → redireciona (segurança extra)
-  if (!loadSavedToken()) {
+  /* 1) Verificar token de login */
+  const token = loadSavedToken();
+  if (!token) {
+    console.warn("Token ausente → redirecionando para login...");
     window.location.href = "./login.html";
     return;
   }
 
-  // inicializar uma sincronização ao boot (não bloqueante)
-  Sync.initialSync().then(() => {
-    // atualizar UI após o sync
-    UI.renderActiveContest();
-  }).catch((e) => {
-    console.warn("initialSync error", e);
-    UI.renderActiveContest();
-  });
+  /* 2) Carregar estado local */
+  initState();
 
-  // salvar antes de fechar (precaução)
-  window.addEventListener("beforeunload", () => {
-    try { State.saveLocal(); } catch {}
-  });
+  /* 3) Montar interface */
+  initLayout();
+
+  /* 4) Mostrar app */
+  document.getElementById("app").style.display = "grid";
+
+  /* 5) Sincronizar imediatamente após login */
+  await syncNow();
+
+  /* 6) Configurar botões da Sidebar */
+  setupButtons();
+
+  console.log("APP iniciado com sucesso!");
 }
 
-/* ---------- Export util for debugging ---------- */
-window.__STUDY_APP = {
-  getState: () => State.state,
-  saveNow: () => Sync.saveToDriveNow(),
-  initialSync: () => Sync.initialSync()
+/* ============================================================
+   CONFIGURAÇÃO DOS BOTÕES
+============================================================ */
+function setupButtons() {
 
-};
+  /* BOTÃO → Exportar JSON */
+  document.getElementById("exportBtn").onclick = () => {
+    const blob = new Blob([JSON.stringify(state, null, 2)], {
+      type: "application/json"
+    });
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "progresso_estudos.json";
+    a.click();
+
+    URL.revokeObjectURL(url);
+  };
+
+  /* BOTÃO → Importar JSON */
+  document.getElementById("importBtn").onclick = () => {
+    const inp = document.createElement("input");
+    inp.type = "file";
+    inp.accept = "application/json";
+
+    inp.onchange = async (ev) => {
+      const file = ev.target.files[0];
+      if (!file) return;
+
+      try {
+        const txt = await loadFileAsText(file);
+        const parsed = JSON.parse(txt);
+
+        Object.assign(state, parsed);
+        saveLocal(state);
+        renderActiveContest();
+
+        alert("Importado com sucesso!");
+
+      } catch (e) {
+        alert("Arquivo JSON inválido.");
+        console.error(e);
+      }
+    };
+
+    inp.click();
+  };
+
+  /* BOTÃO → Sincronizar manualmente */
+  document.getElementById("syncBtn").onclick = () => {
+    syncNow();
+  };
+
+  /* BOTÃO → Logout */
+  document.getElementById("authArea").innerHTML = `
+    <button id="logoutBtn" class="small btn-ghost">Sair da conta</button>
+  `;
+  document.getElementById("logoutBtn").onclick = () => logout();
+
+  /* BOTÃO → Limpar cache PWA */
+  const clearBtn = document.getElementById("clearCaches");
+  if (clearBtn) {
+    clearBtn.onclick = async () => {
+      if (navigator.serviceWorker) {
+        const regs = await navigator.serviceWorker.getRegistrations();
+        for (const r of regs) await r.unregister();
+      }
+      if (window.caches) {
+        const keys = await caches.keys();
+        for (const k of keys) await caches.delete(k);
+      }
+      alert("Cache PWA limpo. Recarregue (Ctrl + F5).");
+    };
+  }
+}
+
+/* ============================================================
+   Iniciar aplicação
+============================================================ */
+boot();
