@@ -71,7 +71,7 @@ function decodeJwt(token) {
    OAUTH2 — OBTENÇÃO DO ACCESS_TOKEN PARA O GOOGLE DRIVE
 ============================================================ */
 
-const CLIENT_ID = "SEU_CLIENT_ID.apps.googleusercontent.com"; // SUBSTITUA PELO SEU
+const CLIENT_ID = "553818652026-vjsmkokm1pibph3ehai36q3pmbp8js88.apps.googleusercontent.com";
 const SCOPE = "https://www.googleapis.com/auth/drive.appdata";
 
 /**
@@ -226,3 +226,4 @@ export async function downloadAppDataFile(fileId) {
 
   return await res.json();
 }
+
