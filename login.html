@@ -83,7 +83,7 @@
 
     async function handleGoogleCredential(response) {
       try {
-        await saveTokenAfterLogin(response.credential);
+        await requestAccessToken();
 
         // Redirecionar para o app
         window.location.href = "./index.html";
@@ -97,3 +97,4 @@
 
 </body>
 </html>
+
