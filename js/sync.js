@@ -1,53 +1,154 @@
-// ======================================================
-// sync.js — Sincronização com Google Drive (AppData)
-// ======================================================
+/* ============================================================
+   SYNC.JS — Sincronização com Google Drive
+   - Faz download/upload do progresso
+   - Faz merge automático entre dispositivos
+   - Usa state.js como fonte master
+============================================================ */
 
-import { state, saveState, loadState } from "./state.js";
-import { mergeStates } from "./util.js";
 import {
-    findAppDataFile,
-    createAppDataFile,
-    updateAppDataFile,
-    downloadAppDataFile
+  state,
+  saveLocal,        // CORRETO — substitui saveState
+  defaultState
+} from "./state.js";
+
+import {
+  loadSavedToken,
+  findAppDataFile,
+  createAppDataFile,
+  updateAppDataFile,
+  downloadAppDataFile
 } from "../auth.js";
 
-// Nome fixo do arquivo no Drive
-const DRIVE_FILENAME = "progresso_estudos.json";
 
-// ------------------------------------------------------
-// Sincronização Completa (com merge inteligente)
-// ------------------------------------------------------
-export async function syncDrive() {
-    const localState = loadState();
-    const status = document.getElementById("syncStatus");
-    status.textContent = "Sincronizando...";
+/* ============================================================
+   Controle de debounce para evitar uploads excessivos
+============================================================ */
 
-    try {
-        const file = await findAppDataFile(DRIVE_FILENAME);
+let saveTimer = null;
 
-        // ========== (1) Primeiro uso — cria arquivo remoto ==========
-        if (!file) {
-            await createAppDataFile(DRIVE_FILENAME, localState);
-            status.textContent = "Sincronizado (criado)";
-            return;
-        }
+export function scheduleSave() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(syncToDrive, 1200);
+}
 
-        // ========== (2) Baixa remoto ==========
-        const remote = await downloadAppDataFile(file.id);
 
-        // ========== (3) Realiza merge inteligente ==========
-        const merged = mergeStates(localState, remote);
+/* ============================================================
+   Função de MERGE inteligente
+============================================================ */
 
-        // atualiza local
-        saveState(merged);
+export function mergeStates(local, remote) {
 
-        // atualiza remoto
-        await updateAppDataFile(file.id, merged);
+  const merged = {
+    materias: {},
+    notes: {},
+    updatedAt: Math.max(local.updatedAt, remote.updatedAt)
+  };
 
-        status.textContent = "Sincronizado (merge OK)";
+  // Mesclar matérias (assuntos)
+  const materias = new Set([
+    ...Object.keys(local.materias),
+    ...Object.keys(remote.materias)
+  ]);
 
-    } catch (e) {
-        console.error("Erro ao sincronizar:", e);
-        status.textContent = "Erro ao sincronizar";
+  materias.forEach(mat => {
+    merged.materias[mat] = {};
+    const assuntos = new Set([
+      ...Object.keys(local.materias[mat] || {}),
+      ...Object.keys(remote.materias[mat] || {})
+    ]);
+
+    assuntos.forEach(a => {
+      const lv = local.materias[mat]?.[a] ?? 0;
+      const rv = remote.materias[mat]?.[a] ?? 0;
+
+      // Regras:
+      // - Se um marcou e o outro não → pega o maior valor
+      // - Se ambos marcaram diferentes → pega o maior valor
+      // - Se ambos 0 → fica 0
+      merged.materias[mat][a] = Math.max(lv, rv);
+    });
+  });
+
+  // Mesclar notas
+  merged.notes = { ...remote.notes, ...local.notes };
+
+  return merged;
+}
+
+
+
+/* ============================================================
+   Upload do estado local → Drive
+============================================================ */
+
+async function syncToDrive() {
+  const token = loadSavedToken();
+  if (!token) return;
+
+  try {
+    const file = await findAppDataFile("progresso_estudos.json");
+
+    if (!file) {
+      await createAppDataFile("progresso_estudos.json", state);
+      console.log("Drive: arquivo criado.");
+      return;
     }
+
+    await updateAppDataFile(file.id, state);
+    console.log("Drive: progresso enviado.");
+
+  } catch (e) {
+    console.error("Erro ao sincronizar com Drive:", e);
+  }
+}
+
+
+
+/* ============================================================
+   Sincronização completa (download + merge + upload)
+============================================================ */
+
+export async function fullSync() {
+
+  const token = loadSavedToken();
+  if (!token) {
+    console.warn("Sem token — ignorando sync.");
+    return;
+  }
+
+  try {
+
+    document.getElementById("syncStatus").textContent = "Sincronizando...";
+
+    const file = await findAppDataFile("progresso_estudos.json");
+
+    if (!file) {
+      // Primeiro uso → criar arquivo remoto
+      await createAppDataFile("progresso_estudos.json", state);
+      document.getElementById("syncStatus").textContent = "Arquivo criado no Drive";
+      return;
+    }
+
+    const remote = await downloadAppDataFile(file.id);
+
+    // MERGE ENTRE ESTADOS
+    const merged = mergeStates(state, remote);
+
+    // Salvar localmente
+    saveLocal(merged);
+
+    // Atualizar objeto state usado pela UI
+    state.materias = merged.materias;
+    state.notes = merged.notes;
+    state.updatedAt = merged.updatedAt;
+
+    // Mandar estado final para Drive
+    await updateAppDataFile(file.id, merged);
+
+    document.getElementById("syncStatus").textContent = "Sincronizado!";
+
+  } catch (e) {
+    console.error("Erro no sync:", e);
+    document.getElementById("syncStatus").textContent = "Erro ao sincronizar";
+  }
 }
