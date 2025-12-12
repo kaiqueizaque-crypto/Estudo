@@ -68,14 +68,15 @@ function decodeJwt(token) {
 }
 
 /* ============================================================
-   OAUTH2 — OBTENÇÃO DO ACCESS_TOKEN PARA O GOOGLE DRIVE
+   OAuth2 — Access Token para Google Drive
 ============================================================ */
 
 const CLIENT_ID = "553818652026-vjsmkokm1pibph3ehai36q3pmbp8js88.apps.googleusercontent.com";
 const SCOPE = "https://www.googleapis.com/auth/drive.appdata";
 
 /**
- * Solicita access_token OAuth2 (necessário para o Drive)
+ * Solicita access_token OAuth2 (necessário para o Drive).
+ * GIS cuida do login; OAuth2 cuida da permissão do Drive.
  */
 export function requestAccessToken() {
   return new Promise((resolve, reject) => {
@@ -96,14 +97,14 @@ export function requestAccessToken() {
 }
 
 /**
- * Retorna access_token para chamadas Drive
+ * Retorna access_token — usado nas requisições ao Drive
  */
 export function loadAccessToken() {
   return localStorage.getItem("g_access_token") || null;
 }
 
 /* ============================================================
-   Helpers para chamadas autenticadas ao Google Drive
+   Helpers Drive API v3
 ============================================================ */
 
 /**
@@ -150,24 +151,22 @@ export async function driveSend(path, method, body, isMultipart = false) {
 }
 
 /* ============================================================
-   Operações do arquivo appDataFolder
+   Operaçōes AppDataFolder
 ============================================================ */
 
 const DRIVE_FILENAME = "progresso_estudos.json";
 
 /**
- * Procura arquivo remoto
+ * Procura arquivo remoto no AppDataFolder
  */
 export async function findAppDataFile() {
-  const result = await driveGet(
+  return await driveGet(
     `/files?spaces=appDataFolder&q=name='${DRIVE_FILENAME}'&fields=files(id,name,modifiedTime)`
-  );
-
-  return result.files && result.files.length ? result.files[0] : null;
+  ).then(r => r.files && r.files.length ? r.files[0] : null);
 }
 
 /**
- * Cria arquivo novo no appDataFolder
+ * Cria novo arquivo no AppDataFolder — multipart
  */
 export async function createAppDataFile(content) {
   const metadata = {
@@ -197,7 +196,7 @@ export async function createAppDataFile(content) {
 }
 
 /**
- * Atualiza arquivo remoto existente
+ * Atualiza arquivo existente
  */
 export async function updateAppDataFile(fileId, content) {
   return await driveSend(
@@ -208,7 +207,7 @@ export async function updateAppDataFile(fileId, content) {
 }
 
 /**
- * Baixa arquivo do appDataFolder
+ * Baixa arquivo do AppDataFolder
  */
 export async function downloadAppDataFile(fileId) {
   const token = loadAccessToken();
@@ -226,4 +225,3 @@ export async function downloadAppDataFile(fileId) {
 
   return await res.json();
 }
-
