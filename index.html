@@ -3,64 +3,50 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Plano de Estudos — v2.0</title>
+  <title>Plano de Estudos</title>
 
-  <!-- CSS (pasta css/ conforme combinado) -->
-  <link rel="stylesheet" href="./css/style.css" />
+  <link rel="stylesheet" href="./css/style.css">
+  <link rel="manifest" href="./manifest.json">
 
-  <!-- ícones -->
-  <link rel="icon" type="image/png" href="./logo2.png" />
-  <meta name="theme-color" content="#0b5ea8" />
+  <!-- Icone -->
+  <link rel="icon" href="./logo.png" type="image/png">
+
+  <!-- Google Identity (necessário para logout seguro) -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 
 <body>
 
-  <!-- APP WRAPPER (iniciado hidden até o boot do JS) -->
-  <div id="app" class="app" style="display:none">
-
-    <!-- SIDEBAR -->
-    <aside class="sidebar card">
-      <img id="logo" src="./logo.png" alt="Logo" />
-
+  <div id="app">
+    <header class="app-header">
+      <img src="./logo2.png" class="app-logo" alt="Logo">
       <h1>Plano de Estudos</h1>
-      <div class="meta">PC-BA & PRF-ADM</div>
+      <p id="syncStatus">Status: aguardando</p>
 
-      <div id="contestList" class="contest-list"></div>
+      <button id="btnLogout" class="btn-danger">Sair da conta</button>
+    </header>
 
-      <div class="controls" style="margin-top:12px">
-        <button id="exportBtn" class="small btn-ghost">Exportar JSON</button>
-        <button id="importBtn" class="small btn-ghost">Importar JSON</button>
-        <button id="syncBtn" class="small">Sincronizar Drive</button>
-      </div>
-
-      <div id="authArea" style="margin-top:12px"></div>
-
-      <div id="syncStatus" class="status-line" style="margin-top:12px">Status: carregando...</div>
-
-      <button id="clearCaches" class="small btn-ghost clear-cache" style="margin-top:12px">Limpar cache PWA</button>
-    </aside>
-
-    <!-- MAIN -->
-    <main class="main">
-      <div id="pageContainer"></div>
+    <main class="app-main">
+      <!-- Área de matérias (renderizada pelo ui.js) -->
+      <div id="materiasContainer"></div>
     </main>
+
+    <footer class="app-footer">
+      <button id="btnExport" class="btn">Exportar JSON</button>
+      <button id="btnImport" class="btn">Importar JSON</button>
+      <button id="btnSync"   class="btn-primary">Sincronizar Drive</button>
+      <button id="btnPwa"    class="btn">Limpar cache PWA</button>
+    </footer>
   </div>
 
-  <!-- MODAL NOTAS -->
-  <div id="modalBackdrop" class="modal-backdrop" style="display:none">
-    <div class="modal">
-      <h3 id="modalTitle">Notas</h3>
-      <textarea id="noteArea" placeholder="Anotações por matéria..."></textarea>
-      <div class="footer-row">
-        <button id="closeModal" class="btn-ghost small">Fechar</button>
-        <button id="deleteNote" class="btn-ghost small">Apagar</button>
-        <button id="saveNote" class="small">Salvar</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Single entrypoint: app.js -->
-  <script type="module" src="./js/app.js"></script>
+  <!-- Scripts principais (corrigidos para usar pasta js/) -->
+  <script type="module">
+    import "./js/auth.js";
+    import "./js/state.js";
+    import "./js/ui.js";
+    import "./js/sync.js";
+    import "./js/app.js";
+  </script>
 
 </body>
 </html>
