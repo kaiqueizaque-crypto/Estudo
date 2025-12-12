@@ -1,67 +1,53 @@
-// ======================================================
-// state.js — Gerencia o estado local do aplicativo
-// ======================================================
+// state.js
+// ----------------------------
+// ESTADO PADRÃO DO APLICATIVO
+// ----------------------------
 
-// Nome da chave usada no LocalStorage
-const STORAGE_KEY = "progresso_estudos_v2";
+// Lista de concursos disponíveis:
+export const CONCURSOS = {
+    "pc_ba": {
+        nome: "Polícia Civil - PC-BA",
+        materias: [
+            "Língua Portuguesa",
+            "Raciocínio Lógico",
+            "Direito Penal",
+            "Direito Processual Penal",
+            "Direitos Humanos",
+            "Informática"
+        ]
+    },
 
-// Estado padrão
-export let state = {
-    materias: {},
-    notes: {},
+    "prf_adm": {
+        nome: "PRF Administrativo",
+        materias: [
+            "Língua Portuguesa",
+            "Raciocínio Lógico",
+            "Informática",
+            "Administração",
+            "Ética",
+            "Legislação de Trânsito"
+        ]
+    }
+};
+
+// Estado inicial salvo localmente
+export const defaultState = {
+    selectedContest: "pc_ba",
+
+    materias: {},  
+    notes: {},      
+
     updatedAt: 0
 };
 
-// ------------------------------------------------------
-// Carrega o estado salvo no browser
-// ------------------------------------------------------
+// Carrega estado salvo do navegador
 export function loadState() {
-    try {
-        const raw = localStorage.getItem(STORAGE_KEY);
-        if (!raw) return state;
-
-        const parsed = JSON.parse(raw);
-
-        // Mantém estrutura mínima garantida
-        state = {
-            materias: parsed.materias || {},
-            notes: parsed.notes || {},
-            updatedAt: parsed.updatedAt || 0
-        };
-
-        return state;
-    } catch (e) {
-        console.error("Erro ao carregar state:", e);
-        return state;
-    }
+    const raw = localStorage.getItem("progresso_estudos_v1");
+    return raw ? JSON.parse(raw) : JSON.parse(JSON.stringify(defaultState));
 }
 
-// ------------------------------------------------------
-// Salva alterações localmente
-// ------------------------------------------------------
-export function saveState(newState = null) {
-    if (newState) state = newState;
+// Salva estado local
+export function saveState(state) {
     state.updatedAt = Date.now();
-
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-}
-
-// ------------------------------------------------------
-// Atualiza apenas um campo específico
-// ------------------------------------------------------
-export function updateState(path, value) {
-    let obj = state;
-
-    // path = "materias.pc_ba.progresso"
-    const parts = path.split(".");
-
-    while (parts.length > 1) {
-        const part = parts.shift();
-        obj[part] = obj[part] || {};
-        obj = obj[part];
-    }
-
-    obj[parts[0]] = value;
-
-    saveState(state);
+    localStorage.setItem("progresso_estudos_v1", JSON.stringify(state));
 }
