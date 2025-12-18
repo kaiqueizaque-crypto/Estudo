@@ -1,0 +1,329 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Login — SIGMA</title>
+
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+
+<style>
+:root{
+  --primary:#1a73e8;
+  --bg:#eef2f7;
+  --card:#ffffff;
+  --text:#202124;
+  --muted:#5f6368;
+}
+
+*{ box-sizing:border-box }
+
+body{
+  margin:0;
+  min-height:100vh;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:linear-gradient(180deg,#eaf0ff,#eef2f7);
+  font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,sans-serif;
+  color:var(--text);
+}
+
+/* LOGIN */
+.login-wrapper{
+  width:100%;
+  padding:16px;
+  display:flex;
+  justify-content:center;
+}
+
+.card{
+  width:100%;
+  max-width:380px;
+  background:var(--card);
+  border-radius:18px;
+  padding:32px 28px;
+  text-align:center;
+  box-shadow:0 10px 25px rgba(0,0,0,.08);
+}
+
+.logo{
+  width:72px;
+  margin:0 auto 14px;
+  display:block;
+}
+
+.brand{
+  font-size:24px;
+  font-weight:700;
+}
+
+.subtitle{
+  font-size:14px;
+  color:var(--muted);
+  margin:14px 0 28px;
+}
+
+.divider{
+  height:1px;
+  background:#e6e9ef;
+  margin:24px 0;
+}
+
+#btn{
+  display:flex;
+  justify-content:center;
+}
+
+/* MODAL PWA */
+#pwaModal{
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,.55);
+  display:none;
+  align-items:center;
+  justify-content:center;
+  z-index:1000;
+}
+
+.pwa-card{
+  background:#fff;
+  border-radius:18px;
+  padding:26px 22px;
+  max-width:320px;
+  width:90%;
+  text-align:center;
+}
+
+.pwa-card h3{
+  margin:0 0 10px;
+}
+
+.pwa-card p{
+  font-size:14px;
+  color:#555;
+  margin-bottom:22px;
+}
+
+.pwa-actions{
+  display:flex;
+  gap:10px;
+}
+
+.pwa-actions button{
+  flex:1;
+  padding:12px;
+  border-radius:12px;
+  border:none;
+  cursor:pointer;
+}
+
+.install{
+  background:#1a73e8;
+  color:#fff;
+}
+
+.later{
+  background:#e6e9ef;
+}
+
+/* BOTÃO FIXO */
+#installHint{
+  position:fixed;
+  bottom:16px;
+  right:16px;
+  background:#1a73e8;
+  color:#fff;
+  padding:10px 14px;
+  border-radius:14px;
+  font-size:13px;
+  cursor:pointer;
+  display:none;
+  box-shadow:0 4px 12px rgba(0,0,0,.2);
+}
+
+@media (max-width:480px){
+  .logo{ width:64px }
+}
+</style>
+</head>
+
+<body>
+
+<!-- MODAL -->
+<div id="pwaModal">
+  <div class="pwa-card">
+    <h3>Instalar o SIGMA</h3>
+    <p>Instale o app para melhor desempenho e compatibilidade.</p>
+    <div class="pwa-actions">
+      <button class="install" onclick="installApp()">Instalar app</button>
+      <button class="later" onclick="installLater()">Instalar depois</button>
+    </div>
+  </div>
+</div>
+
+<!-- LOGIN -->
+<div class="login-wrapper">
+  <div class="card">
+    <img src="logo-192.png" class="logo" alt="SIGMA">
+    <div class="brand">SIGMA</div>
+    <div class="subtitle">
+      Faça login com sua conta Google<br>
+      para sincronizar seus estudos.
+    </div>
+    <div class="divider"></div>
+    <div id="btn"></div>
+  </div>
+</div>
+
+<div id="installHint" onclick="installApp()">📱 Instalar app</div>
+
+<script>
+/* =====================
+   CONTROLE PWA
+===================== */
+let deferredPrompt = null;
+
+const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+const isStandalone =
+  window.matchMedia('(display-mode: standalone)').matches ||
+  window.navigator.standalone === true;
+
+if (
+  isStandalone &&
+  !sessionStorage.getItem('redirected')
+) {
+  sessionStorage.setItem('redirected','yes');
+  localStorage.setItem('pwa_installed','yes');
+  location.href = 'sigma.html';
+}
+
+
+
+window.addEventListener('load', () => {
+  if (
+    !localStorage.getItem('pwa_installed') &&
+    !localStorage.getItem('pwa_install_dismissed')
+  ) {
+    document.getElementById('pwaModal').style.display = 'flex';
+  }
+
+  // 1. Se já estiver rodando como app, entra direto
+  if (
+    isStandalone &&
+    !sessionStorage.getItem('redirected')
+  ) {
+    sessionStorage.setItem('redirected','yes');
+    localStorage.setItem('pwa_installed','yes');
+    location.href = 'sigma.html';
+    return;
+  }
+
+  // 2. Primeira visita → mostrar modal
+  if (
+    !localStorage.getItem('pwa_installed') &&
+    !localStorage.getItem('pwa_install_dismissed')
+  ) {
+    document.getElementById('pwaModal').style.display = 'flex';
+    return;
+  }
+
+  // 3. Usuário clicou em "instalar depois"
+  if (
+    !isStandalone &&
+    !localStorage.getItem('pwa_installed') &&
+    localStorage.getItem('pwa_install_dismissed')
+  ) {
+    document.getElementById('installHint').style.display = 'block';
+  }
+
+});
+
+function installApp(){
+  if (isIOS) {
+    alert(
+      'No iPhone:\n' +
+      'Toque em Compartilhar\n' +
+      'e depois em "Adicionar à Tela de Início".'
+    );
+    return;
+  }
+
+  if (deferredPrompt) {
+    deferredPrompt.prompt();
+    deferredPrompt.userChoice.then(res => {
+      if (res.outcome === 'accepted') {
+        localStorage.setItem('pwa_installed','yes');
+        location.href = 'sigma.html';
+      }
+      deferredPrompt = null;
+    });
+  } else {
+    alert('Instalação automática indisponível neste navegador.');
+  }
+}
+
+
+function installLater(){
+  localStorage.setItem('pwa_install_dismissed','yes');
+  document.getElementById('pwaModal').style.display='none';
+  document.getElementById('installHint').style.display='block';
+}
+
+
+/* =====================
+   LOGIN GOOGLE (INALTERADO)
+===================== */
+let tokenClient;
+
+window.onload = () => {
+  google.accounts.id.initialize({
+    client_id: "553818652026-vjsmkokm1pibph3ehai36q3pmbp8js88.apps.googleusercontent.com",
+    callback: handleCredential,
+    auto_select:false,
+    cancel_on_tap_outside:true
+  });
+
+  google.accounts.id.cancel();
+
+  google.accounts.id.renderButton(btn,{
+    theme:"filled_blue",
+    size:"large",
+    width:260
+  });
+
+  tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id:"553818652026-vjsmkokm1pibph3ehai36q3pmbp8js88.apps.googleusercontent.com",
+    scope:"https://www.googleapis.com/auth/spreadsheets",
+    callback:handleToken
+  });
+};
+
+function handleCredential(res){
+  const email = parseJwt(res.credential).email;
+  localStorage.setItem("user_email",email);
+
+  if(!localStorage.getItem("google_access_token")){
+    tokenClient.requestAccessToken();
+  }else{
+    location.href="sigma.html";
+  }
+}
+
+function handleToken(token){
+  localStorage.setItem("google_access_token",token.access_token);
+  location.href="sigma.html";
+}
+
+function parseJwt(token){
+  return JSON.parse(atob(token.split('.')[1]));
+}
+
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js');
+}
+
+</script>
+
+</body>
+</html>
